@@ -29,6 +29,9 @@ if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
+# ВАЖНО: Добавляем iris_ai в путь ПЕРЕД импортами
+sys.path.insert(0, str(Path(__file__).parent / 'iris_ai'))
+
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
@@ -221,7 +224,7 @@ class IRISMainController:
         # 3. Запускаем TTS Engine (в отдельном потоке, а не процессе)
         logger.info("\n[ЭТАП 2/3] Инициализация TTS Engine...")
         try:
-            from iris_ai.iris_tts_integration import IRISGameEventListener
+            from iris_tts_integration import IRISGameEventListener
             self.game_listener = IRISGameEventListener()
             logger.info("✅ TTS Engine инициализирован")
             
@@ -233,10 +236,12 @@ class IRISMainController:
             
         except Exception as e:
             logger.error(f"❌ Ошибка инициализации TTS: {e}")
+            import traceback
+            traceback.print_exc()
             self.stop()
             return False
         
-        # 4. Готовны к работе
+        # 4. Готовы к работе
         logger.info("\n" + "="*80)
         logger.info("✅ ВСЕ КОМПОНЕНТЫ ИНИЦИАЛИЗИРОВАНЫ И РАБОТАЮТ!")
         logger.info("="*80)
@@ -353,6 +358,8 @@ class IRISMainController:
                 break
             except Exception as e:
                 logger.error(f"❌ Ошибка: {e}")
+                import traceback
+                traceback.print_exc()
 
 
 def main():
