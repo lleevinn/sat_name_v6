@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 iris_voice_bridge.py - Объединение Speech Recognition + LLM + TTS
-Непрерывный диалог с IRIS 🂭🔊
+Непрерывный диалог с IRIS 💬🔊
 """
 
 import logging
@@ -73,7 +73,7 @@ class IRISVoiceBridge:
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
-        model_name: str = "mistral-nemo",
+        model_name: str = "qwen3:4b-instruct",
         speech_model_path: str = None
     ):
         """
@@ -111,7 +111,7 @@ class IRISVoiceBridge:
         self.current_mode = ConversationMode.CHAT_MODE
         self.is_active = False
         
-        logger.info("✅ IRIS Voice Bridge инициализирована")
+        logger.info(f"✅ IRIS Voice Bridge инициализирована (модель: {model_name})")
     
     def _check_ollama(self) -> bool:
         """Check если Ollama доступна."""
@@ -132,7 +132,7 @@ class IRISVoiceBridge:
             Ответ Олламы
         """
         try:
-            # Препарим нсторию для LLM
+            # Преираем систему для LLM
             system_prompt = """You are IRIS, a female gaming assistant for CS2. 
             You are helpful, friendly, and respond in Russian. Keep answers short (1-2 sentences)."""
             
@@ -200,7 +200,7 @@ iris: """
         3. отвечаем
         
         Args:
-            timeout: Максимум время ожидания речи
+            timeout: Максимум времени ожидания речи
         """
         if not self.recognizer:
             logger.error("❌ STT не активен")
@@ -235,7 +235,7 @@ iris: """
         emotion_name = self._detect_emotion(response_text)
         emotion = getattr(EmotionType, emotion_name.upper(), EmotionType.NORMAL)
         
-        logger.info(f"👅 [IRIS]: {response_text}")
+        logger.info(f"👩 [IRIS]: {response_text}")
         self.tts_engine.say(response_text, emotion=emotion, priority=5)
         self.tts_engine.wait_for_speech(timeout=15.0)
         
@@ -252,16 +252,16 @@ iris: """
             num_exchanges: Количество экспортов
         """
         logger.info("\n" + "="*70)
-        logger.info(f"🂭 НАЧИНАЕМ диалог ({num_exchanges} экспортов)")
+        logger.info(f"💬 НАЧИНАЕМ диалог ({num_exchanges} экспортов)")
         logger.info("="*70)
         
         if not self._check_ollama():
-            logger.error("\n❌ Ollama не работает! Запусти: ollama run mistral-nemo")
+            logger.error(f"\n❌ Ollama не работает! Запусти: ollama run {self.model_name}")
             return
         
         # Привет
-        welcome = "Привет! Я IRIS, твоя гаминг ассистентка. Давай чатить!"
-        logger.info(f"\n👅 [IRIS]: {welcome}")
+        welcome = "Привет! Я IRIS, твоя гейминг ассистентка. Давай чатить!"
+        logger.info(f"\n👩 [IRIS]: {welcome}")
         self.tts_engine.say(welcome, emotion=EmotionType.EXCITED, priority=1)
         self.tts_engine.wait_for_speech(timeout=10.0)
         
@@ -284,7 +284,7 @@ iris: """
         logger.info("✅ ДИАЛОГ ЗАВЕРШЕН!")
         logger.info("="*70)
         
-        # Оцистка
+        # Очистка
         self.cleanup()
     
     def cleanup(self):
@@ -297,13 +297,13 @@ iris: """
 def main():
     """Настоящие тесты - Voice Bridge!"""
     logger.info("\n" + "="*70)
-    logger.info("🂭 IRIS VOICE BRIDGE - ПОЛНЫЙ ДИАЛОГ")
+    logger.info("💬 IRIS VOICE BRIDGE - ПОЛНЫЙ ДИАЛОГ")
     logger.info("="*70 + "\n")
     
     # Конфигурация
     bridge = IRISVoiceBridge(
         ollama_url="http://localhost:11434",
-        model_name="mistral-nemo",  # или другая модель
+        model_name="qwen3:4b-instruct",  # ИСПОЛЬЗУЕМ ТВОЮ МОДЕЛЬ!
         speech_model_path=None  # автосеарч
     )
     
