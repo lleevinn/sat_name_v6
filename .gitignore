@@ -1,0 +1,15 @@
+
+echo "venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+ENV/
+models/
+node_modules/
+.DS_Store
+*.log
+.replit
+" > .gitignore

@@ -1,0 +1,55 @@
+{
+  "iris_config": {
+    "mode": "hybrid",
+    "streamer_name": "Кир", 
+    "enable_voice": true,
+    "enable_learning": true,
+    "api_key": "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",
+    "gsi_port": 3000,
+    "voice_engine": "pyttsx3",
+    
+    "emotion_settings": {
+      "default_emotion": "neutral",
+      "emotion_transition_speed": 0.3,
+      "max_emotion_intensity": 0.9
+    },
+    
+    "memory_settings": {
+      "max_memory_entries": 1000,
+      "auto_save_interval": 300,
+      "short_term_memory_size": 20
+    },
+    
+    "stream_settings": {
+      "cooldowns": {
+        "kill": 3.0,
+        "death": 5.0,
+        "round_end": 2.0,
+        "chat_message": 8.0
+      },
+      "chat_response_chance": 0.2,
+      "min_chat_length": 2
+    },
+    
+    "voice_settings": {
+      "wake_word": "ирис",
+      "wake_word_variants": ["ирис", "iris", "ириска"],
+      "listen_timeout": 10,
+      "speech_speed": 1.0,
+      "voice_gender": "female"
+    },
+    
+    "learning_settings": {
+      "auto_learn": true,
+      "training_interval": 300,
+      "min_samples_for_training": 10
+    },
+    
+    "paths": {
+      "models": "./models",
+      "profiles": "./profiles",
+      "memory": "./memory",
+      "logs": "./logs"
+    }
+  }
+}

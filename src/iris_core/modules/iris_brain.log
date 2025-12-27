@@ -1,0 +1,4 @@
+2025-12-20 03:07:23,051 - IrisBrain - ERROR - GROQ_API_KEY не настроен или библиотека не установлена! Используются заглушки.
+2025-12-20 03:07:23,051 - IrisBrain - INFO - Iris Brain инициализирован успешно
+2025-12-20 03:07:23,052 - IrisBrain - INFO - Генерация ответа для EventType.KILL
+2025-12-20 03:07:23,053 - IrisBrain - INFO - Генерация ответа для EventType.CHAT_MESSAGE
