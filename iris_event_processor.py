@@ -14,6 +14,7 @@ iris_event_processor.py - Интеграция CS2 GSI с IRIS Server
     CS2 → GSI (порт 3000) → Этот процесс → IRIS Server (порт 5000)
 
 Использование:
+    python iris_event_processor.py test
     python iris_event_processor.py
 """
 
@@ -241,11 +242,14 @@ class EventProcessor:
         try:
             start_time = time.time()
             
+            logger.info("[SEND] Отправляю в IRIS Server...")
+            
             # Отправляем на /say endpoint (генерирует ответ)
+            # timeout=15 чтобы дождаться даже долгих ответов от Ollama
             response = requests.post(
                 f"{self.iris_url}/say",
                 json={"text": prompt},
-                timeout=10
+                timeout=15
             )
             
             elapsed = time.time() - start_time
@@ -266,26 +270,37 @@ class EventProcessor:
                 return None
         
         except requests.exceptions.Timeout:
-            logger.error("[ERROR] Timeout при отправке в IRIS")
+            logger.error("[ERROR] ⏱️ Timeout при отправке в IRIS (более 15 секунд)")
+            logger.error("[ERROR] Это может быть нормально если Ollama генерирует долго")
+            logger.error("[ERROR] Попробуй ещё раз или убедись что iris_server работает")
+            self.stats['failed'] += 1
+            return None
+        
+        except ConnectionError:
+            logger.error("[ERROR] 🔌 Невозможно подключиться к IRIS Server")
+            logger.error("[ERROR] Убедись что iris_server.py запущена: python iris_ai/iris_server.py")
             self.stats['failed'] += 1
             return None
         
         except Exception as e:
-            logger.error(f"[ERROR] Ошибка при отправке: {e}")
+            logger.error(f"[ERROR] Ошибка при отправке: {type(e).__name__}: {e}")
             self.stats['failed'] += 1
             return None
     
     def print_stats(self):
         """Вывести статистику обработки."""
         logger.info("\n" + "="*60)
-        logger.info("[STATS] Статистика обработки событий:")
+        logger.info("[STATS] 📊 Статистика обработки событий:")
         logger.info(f"  Всего событий: {self.stats['total_events']}")
-        logger.info(f"  Успешно: {self.stats['successful']}")
-        logger.info(f"  Ошибок: {self.stats['failed']}")
+        logger.info(f"  ✅ Успешно: {self.stats['successful']}")
+        logger.info(f"  ❌ Ошибок: {self.stats['failed']}")
         
         if self.stats['response_times']:
             avg_time = sum(self.stats['response_times']) / len(self.stats['response_times'])
-            logger.info(f"  Среднее время ответа: {avg_time:.2f}с")
+            max_time = max(self.stats['response_times'])
+            min_time = min(self.stats['response_times'])
+            logger.info(f"  ⏱️  Среднее время ответа: {avg_time:.2f}с")
+            logger.info(f"  ⏱️  Мин/Макс: {min_time:.2f}с / {max_time:.2f}с")
         
         logger.info("="*60)
 
@@ -327,12 +342,13 @@ def test_processor():
     processor = EventProcessor()
     
     # Проверка доступности IRIS
-    logger.info("\n[TEST] Проверка IRIS Server...")
+    logger.info("\n[TEST] ⏳ Проверка IRIS Server...")
     if processor.is_iris_ready():
         logger.info("✅ IRIS Server доступна!")
     else:
         logger.error("❌ IRIS Server недоступна!")
         logger.error("   Убедись что iris_server.py запущена на http://localhost:5000")
+        logger.error("   Команда: python iris_ai/iris_server.py")
         return
     
     # Тестовые события
@@ -343,14 +359,19 @@ def test_processor():
         ('death', {'total_deaths': 1, 'kd_ratio': 1.5}),
     ]
     
-    logger.info("\n[TEST] Отправка тестовых событий...")
-    for event_type, event_data in test_events:
-        logger.info(f"\n>>> Тестирую {event_type}...")
+    logger.info("\n[TEST] 📨 Отправка тестовых событий...")
+    for i, (event_type, event_data) in enumerate(test_events, 1):
+        logger.info(f"\n>>> ({i}/{len(test_events)}) Тестирую {event_type}...")
         processor.process_event(event_type, event_data)
-        time.sleep(1)  # Пауза между событиями
+        
+        # Больше времени между событиями чтобы не забить Ollama
+        if i < len(test_events):
+            logger.info(f"⏳ Жду 3 секунды перед следующим событием...")
+            time.sleep(3)
     
     # Статистика
     processor.print_stats()
+    logger.info("\n✅ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО!")
 
 # ════════════════════════════════════════════════════════════════
 # ТОЧКА ВХОДА
