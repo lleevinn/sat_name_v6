@@ -94,6 +94,8 @@ class IRISTTSEngine:
         self.speech_queue = queue.PriorityQueue()
         self.is_speaking = False
         self.current_speech_event = None
+        self.speech_done_event = threading.Event()
+        self.speech_done_event.set()  # Изначально готово
         
         # Контекст разговора и игры
         self.context = {
@@ -158,6 +160,7 @@ class IRISTTSEngine:
             event: SpeechEvent с текстом и эмоцией
         """
         try:
+            self.speech_done_event.clear()
             self.is_speaking = True
             self.current_speech_event = event
             emotion = event.emotion.value
@@ -196,6 +199,7 @@ class IRISTTSEngine:
         finally:
             self.is_speaking = False
             self.current_speech_event = None
+            self.speech_done_event.set()
     
     def say(self, text: str, emotion: EmotionType = EmotionType.NORMAL, 
             priority: int = 5, event_type: str = "normal"):
@@ -349,7 +353,7 @@ class IRISTTSEngine:
             responses = [
                 "Отличный KD! Ты играешь как профи. Продолжай!",
                 "С таким KD ты скоро будешь королевой сервера!",
-                "Даже леденды умирают. Вернёшься ещё сильнее!",
+                "Даже легенды умирают. Вернёшься ещё сильнее!",
             ]
             emotion = EmotionType.EXCITED
         elif kd > 1.0:
@@ -443,19 +447,16 @@ class IRISTTSEngine:
         """Проверить пуста ли очередь речи."""
         return self.speech_queue.empty()
     
-    def wait_for_speech(self, timeout: float = None):
+    def wait_for_speech(self, timeout: float = 10.0):
         """
         Ждать пока IRIS заканчивает говорить.
         
         Args:
-            timeout: Максимальное время ожидания в секундах
+            timeout: Максимальное время ожидания в секундах (по умолчанию 10)
         """
-        start_time = time.time()
-        while self.is_speaking or not self.speech_queue.empty():
-            if timeout and (time.time() - start_time) > timeout:
-                logger.warning("⏱️  Timeout при ожидании окончания речи")
-                break
-            time.sleep(0.1)
+        # Ждём с большим timeout'ом, потому что pyttsx3 на Windows может быть медленным
+        if not self.speech_done_event.wait(timeout=timeout):
+            logger.warning(f"⏱️  Timeout при ожидании окончания речи ({timeout}s)")
     
     def clear_queue(self):
         """Очистить очередь речи."""
@@ -477,7 +478,7 @@ def main():
     
     # Инициализация с звуком (как JARVIS)
     iris.init_sound()
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=8.0)
     
     # Тестируем различные события
     logger.info("\n[TEST] Симулирую события игры...\n")
@@ -485,37 +486,37 @@ def main():
     # 1. Начало раунда
     time.sleep(0.5)
     iris.on_game_start()
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 2. Убийство
     time.sleep(0.5)
     iris.on_kill({'weapon': 'AWP', 'headshot': True, 'round_kills': 1})
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 3. Двойное убийство
     time.sleep(0.5)
     iris.on_kill({'weapon': 'AK-47', 'headshot': False, 'round_kills': 2})
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 4. Мало здоровья (КРИТИЧЕСКОЕ!)
     time.sleep(0.5)
     iris.on_low_health({'current_health': 15, 'armor': 25})
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 5. Мало патронов (КРИТИЧЕСКОЕ!)
     time.sleep(0.5)
     iris.on_low_ammo({'weapon': 'AK-47', 'ammo_magazine': 2})
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 6. Смерть
     time.sleep(0.5)
     iris.on_death({'kd_ratio': 1.5})
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 7. Конец раунда (победа)
     time.sleep(0.5)
     iris.on_round_end(team_won=True)
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # 8. Кастомное сообщение с флиртом
     time.sleep(0.5)
@@ -523,7 +524,7 @@ def main():
         "Ты просто королева! Никто не может с тобой сравниться!",
         emotion_name='flirty'
     )
-    iris.wait_for_speech()
+    iris.wait_for_speech(timeout=5.0)
     
     # Выводим статистику
     logger.info("\n" + "="*70)
