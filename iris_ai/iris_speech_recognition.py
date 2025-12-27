@@ -122,58 +122,84 @@ class IRISSpeechRecognizer:
         self.recognizer = None
         logger.info("🔇 Микрофон отключен")
     
+    def _parse_vosk_result(self, json_str: str, is_partial: bool = False) -> str:
+        """
+        Парсим JSON результат от Vosk.
+        
+        Args:
+            json_str: JSON строка от Vosk
+            is_partial: Это partial или final результат?
+            
+        Returns:
+            Распознанный текст
+        """
+        try:
+            data = json.loads(json_str)
+            
+            # Для final результатов
+            if not is_partial and 'result' in data:
+                words = data['result']
+                if isinstance(words, list) and len(words) > 0:
+                    # Vosk возвращает список словарей с ключом 'conf'
+                    text = ' '.join([word.get('conf', '') for word in words if isinstance(word, dict)])
+                    return text.strip()
+            
+            # Для partial результатов
+            if is_partial and 'partial' in data:
+                partial = data['partial']
+                if isinstance(partial, str):
+                    return partial.strip()
+            
+            return ""
+        
+        except json.JSONDecodeError as e:
+            logger.debug(f"⚠️  Ошибка парсинга JSON: {e}")
+            return ""
+        except Exception as e:
+            logger.debug(f"⚠️  Ошибка при парсинге результата: {e}")
+            return ""
+    
     def _listen_worker(self):
         """Worker поток для непрерывного прослушивания."""
         logger.info("🔴 WORKER: Начинаю слушать...")
         
         while self.is_listening:
             try:
+                # Читаем данные с микрофона
                 data = self.stream.read(4096, exception_on_overflow=False)
                 
+                # Проверяем AcceptWaveform (это говорит готов ли результат)
                 if self.recognizer.AcceptWaveform(data):
-                    # Финальный результат!
+                    # Финальный результат готов!
                     result_json = self.recognizer.Result()
-                    result_data = json.loads(result_json)
+                    text = self._parse_vosk_result(result_json, is_partial=False)
                     
-                    if 'result' in result_data and result_data['result']:
-                        # Объединяем слова в строку
-                        text = ' '.join([w['conf'] for w in result_data['result']])
-                        # Лучше так:
-                        text = ' '.join([word for item in result_data['result'] 
-                                       for word in [item.get('conf', '')]])
-                        
-                        # Правильно получаем текст
-                        try:
-                            words = [item['conf'] for item in result_data['result']]
-                            text = ' '.join(str(w) for w in words if w)
-                        except:
-                            text = result_json
-                        
-                        # На самом деле в Vosk это так:
-                        words_list = result_data.get('result', [])
-                        if words_list:
-                            text = ' '.join([word.get('conf', '') for word in words_list])
-                        else:
-                            text = ""
-                        
-                        if text.strip():
-                            logger.info(f"✅ [РАСПОЗНАНО] {text}")
-                            self.last_final_result = text
-                            self.results_queue.put({'type': 'final', 'text': text})
+                    if text:
+                        logger.info(f"✅ [РАСПОЗНАНО] {text}")
+                        self.last_final_result = text
+                        self.results_queue.put({'type': 'final', 'text': text})
                 
                 else:
-                    # Partial результат
-                    result_json = self.recognizer.PartialResult()
-                    result_data = json.loads(result_json)
+                    # Partial результат - слово ещё не закончилось
+                    try:
+                        result_json = self.recognizer.PartialResult()
+                        text = self._parse_vosk_result(result_json, is_partial=True)
+                        
+                        if text and text != self.partial_results[-1:][0] if self.partial_results else False:
+                            logger.debug(f"📝 [PARTIAL] {text}")
+                            self.partial_results.append(text)
                     
-                    if 'result' in result_data and result_data['result']:
-                        partial_text = ' '.join([w.get('conf', '') for w in result_data['result']])
-                        if partial_text.strip():
-                            logger.debug(f"📝 [PARTIAL] {partial_text}")
-                            self.results_queue.put({'type': 'partial', 'text': partial_text})
+                    except AttributeError:
+                        # PartialResult может не быть в некоторых версиях Vosk
+                        logger.debug("⚠️  PartialResult недоступен, пропускаю")
+                        continue
+                    except Exception as e:
+                        logger.debug(f"⚠️  Ошибка partial: {e}")
+                        continue
             
             except Exception as e:
                 logger.error(f"❌ Ошибка в listen_worker: {e}")
+                self.is_listening = False
                 break
         
         logger.info("🔴 WORKER: Остановлен")
@@ -217,24 +243,30 @@ class IRISSpeechRecognizer:
                 break
         
         # Ждём финального результата
-        end_time = None
-        try:
-            while True:
-                result = self.results_queue.get(timeout=0.1)
-                
-                if result['type'] == 'final':
-                    text = result['text']
-                    logger.info(f"🎯 [FINAL] {text}")
-                    return text
-                
-                # Для partial результатов ждём ещё
-                end_time = None
+        import time
+        start_time = time.time()
         
-        except queue.Empty:
-            # Timeout - вернём последний результат если есть
-            if self.last_final_result:
-                return self.last_final_result
-            return ""
+        try:
+            while time.time() - start_time < timeout:
+                try:
+                    result = self.results_queue.get(timeout=0.1)
+                    
+                    if result['type'] == 'final':
+                        text = result['text']
+                        logger.info(f"🎯 [FINAL] {text}")
+                        return text
+                
+                except queue.Empty:
+                    continue
+        
+        except Exception as e:
+            logger.error(f"❌ Ошибка listen_once: {e}")
+        
+        # Timeout - вернём последний результат если есть
+        if self.last_final_result:
+            return self.last_final_result
+        
+        return ""
     
     def get_context(self) -> dict:
         """Получить контекст распознавания."""
