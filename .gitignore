@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyo
+*.pyd
+.Python
+env/
+ENV/
+models/
+node_modules/
+.DS_Store
+*.log
+.replit
+.local/
+temp_repo/

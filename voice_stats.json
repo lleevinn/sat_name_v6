@@ -1,0 +1,19 @@
+{
+  "timestamp": 1766190666.0642102,
+  "stats": {
+    "total_phrases": 0,
+    "wake_detected": 0,
+    "vosk_success": 0,
+    "google_success": 0,
+    "avg_confidence": 0.0,
+    "last_recognition": "",
+    "audio_quality": 0.9969171007474263
+  },
+  "settings": {
+    "wake_word": "ирис",
+    "sensitivity": 0.75,
+    "mode": "hybrid",
+    "sample_rate": 16000
+  },
+  "recent_history": []
+}
