@@ -85,7 +85,7 @@ class IRISLauncher:
         # Integration: CS2 GSI
         self.modules['cs2_gsi'] = {
             'name': '🎮 CS2 GSI',
-            'script': self.project_root / 'src' / 'cs2_gsi.py',
+            'script': self.project_root / 'test_cs2_gsi.py',
             'required': True,
             'description': 'Листенер событий Counter-Strike 2',
             'port': 3000
@@ -149,7 +149,7 @@ class IRISLauncher:
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
                 bufsize=1,
-                cwd=str(self.iris_path)
+                cwd=str(self.project_root)
             )
             
             self.processes[module_name] = process
@@ -170,7 +170,7 @@ class IRISLauncher:
         
         # Запускаем обязательные модули
         logger.info("\n" + "="*70)
-        logger.info("[LAUNCHER] ОБАЗАТЕЛЬНЫЕ МОДУЛИ")
+        logger.info("[LAUNCHER] ОБЯЗАТЕЛЬНЫЕ МОДУЛИ")
         logger.info("="*70)
         
         for module_name, module_info in self.modules.items():
@@ -180,7 +180,7 @@ class IRISLauncher:
                 else:
                     fail_count += 1
         
-        # Если падали обязательные - не все посначали
+        # Если падали обязательные - не все поснчали
         if fail_count > 0:
             logger.error(f"[LAUNCHER] ❌ Не все обязательные модули запустились")
             return False
@@ -266,7 +266,7 @@ class IRISLauncher:
         🚀 Модульная архитектура дают высокую масштабируемость.
         ✨ Каждый модуль может работать независимо.
         
-        🔓 Выыд: Ctrl+C
+        🔓 Выход: Ctrl+C
         """
         logger.info(welcome)
     
