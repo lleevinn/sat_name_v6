@@ -365,9 +365,10 @@ def test_processor():
         processor.process_event(event_type, event_data)
         
         # Больше времени между событиями чтобы не забить Ollama
+        # 6 секунд = 4.6с на генерацию + 1.4с на отдых
         if i < len(test_events):
-            logger.info(f"⏳ Жду 3 секунды перед следующим событием...")
-            time.sleep(3)
+            logger.info(f"⏳ Жду 6 секунд перед следующим событием...")
+            time.sleep(6)
     
     # Статистика
     processor.print_stats()
