@@ -1,7 +1,7 @@
 """
 IRIS BRAIN - AI-компаньон для стримов
 Ядро ИИ-логики для реакций на игровые события и взаимодействия с чатом
-Версия: 2.0
+Версия: 2.1 - ИНТЕГРИРОВАННАЯ
 Автор: [Ваше имя]
 """
 
@@ -16,6 +16,18 @@ from collections import deque, defaultdict
 from dataclasses import dataclass, asdict
 from enum import Enum
 from groq import Groq
+
+# ===================== ИНТЕГРАЦИЯ КОМПОНЕНТОВ =====================
+try:
+    from context_builder import SmartContextBuilder
+    from prompt_builder import SmartPromptBuilder
+    from iris_smart_engine import EventPriorityManager, EventPriority
+    from tts_engine import TTSEngine
+    INTEGRATION_AVAILABLE = True
+    print("✅ Компоненты интеграции загружены успешно")
+except ImportError as e:
+    print(f"⚠️ Ошибка загрузки компонентов: {e}")
+    INTEGRATION_AVAILABLE = False
 
 
 # ===================== НАСТРОЙКА ЛОГГИРОВАНИЯ =====================
@@ -107,6 +119,12 @@ class IrisBrain:
     """
     Основной класс AI-компаньона для стримов.
     Обрабатывает игровые события, генерирует реакции, управляет контекстом.
+    
+    🔗 ИНТЕГРИРОВАН С:
+    - context_builder: валидация и анализ контекста
+    - prompt_builder: построение структурированных промптов
+    - iris_smart_engine: приоритизация событий
+    - tts_engine: эмоциональная озвучка
     """
     
     # ===================== СИСТЕМНЫЕ ПРОМПТЫ =====================
@@ -174,9 +192,9 @@ class IrisBrain:
             self.fallback_mode = True
         else:
             try:
-                self.client = Groq(api_key=api_key)  # Исправлено: = вместо -
+                self.client = Groq(api_key=api_key)
                 self.fallback_mode = False
-                logger.info(f"Groq клиент инициализирован с моделью {model}")  # Исправлено: {model}
+                logger.info(f"Groq клиент инициализирован с моделью {model}")
             except Exception as e:
                 logger.error(f"Ошибка инициализации Groq: {e}")
                 self.client = None
@@ -203,6 +221,22 @@ class IrisBrain:
             'viewer_count': 0,
             'chat_activity': 'normal'  # slow, normal, active, hyper
         }
+        
+        # ===================== ИНТЕГРИРОВАННЫЕ КОМПОНЕНТЫ =====================
+        if INTEGRATION_AVAILABLE:
+            self.context_builder = SmartContextBuilder()
+            self.prompt_builder = SmartPromptBuilder()
+            self.smart_engine = EventPriorityManager()
+            self.tts_engine = TTSEngine()
+            
+            logger.info("✅ Компоненты интеграции инициализированы")
+        else:
+            self.context_builder = None
+            self.prompt_builder = None
+            self.smart_engine = None
+            self.tts_engine = None
+            
+            logger.warning("⚠️ Компоненты интеграции недоступны, работаем в базовом режиме")
         
         # Кулдауны для разных типов событий (в секундах)
         self.cooldowns: Dict[str, float] = {
@@ -241,7 +275,7 @@ class IrisBrain:
         # Загруженные ответы для разных событий
         self._load_response_templates()
         
-        logger.info("Iris Brain инициализирован успешно")
+        logger.info("Iris Brain инициализирован успешно (v2.1 с интеграцией)")
     
     # ===================== ЗАГРУЗКА ШАБЛОНОВ =====================
     def _load_response_templates(self):
@@ -411,14 +445,20 @@ class IrisBrain:
     def generate_response(self, 
                          prompt: str, 
                          event_type: EventType = EventType.RANDOM_COMMENT,
-                         force: bool = False) -> Optional[str]:
+                         force: bool = False,
+                         player=None,
+                         cs2_gsi=None) -> Optional[str]:
         """
-        Основной метод генерации ответа
+        Основной метод генерации ответа (ИНТЕГРИРОВАННЫЙ)
+        
+        🔗 ИСПОЛЬЗУЕТ: context_builder, prompt_builder, iris_smart_engine, tts_engine
         
         Args:
             prompt: Текст промпта
             event_type: Тип события
             force: Игнорировать кулдауны
+            player: Объект игрока для context_builder
+            cs2_gsi: Объект CS2 GSI для context_builder
             
         Returns:
             Optional[str]: Сгенерированный ответ или None
@@ -428,8 +468,49 @@ class IrisBrain:
             logger.debug(f"Пропуск ответа на {event_type} (кулдаун)")
             return None
         
-        # Логирование
-        logger.info(f"Генерация ответа для {event_type}")
+        logger.info(f"🎤 Генерация ответа для {event_type}")
+        
+        # ===================== ИНТЕГРАЦИЯ: Построение контекста =====================
+        context_dict = {}
+        if INTEGRATION_AVAILABLE and self.context_builder and player and cs2_gsi:
+            try:
+                context_dict = self.context_builder.build(
+                    player=player,
+                    cs2_gsi=cs2_gsi,
+                    event_type=event_type.value,
+                    event_data={}
+                )
+                logger.debug(f"📋 Контекст собран: {list(context_dict.keys())}")
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка context_builder: {e}")
+        
+        # ===================== ИНТЕГРАЦИЯ: Определение приоритета =====================
+        priority = EventPriority.MEDIUM
+        if INTEGRATION_AVAILABLE and self.smart_engine and context_dict:
+            try:
+                priority = self.smart_engine.get_priority(event_type.value, context_dict)
+                logger.info(f"🎯 Приоритет: {priority.name if hasattr(priority, 'name') else priority}")
+                
+                # Прерыв текущей речи при CRITICAL
+                if priority.value >= 100 and self.tts_engine:
+                    self.tts_engine.interrupt()
+                    logger.info("🛑 Прерывание текущей речи")
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка smart_engine: {e}")
+        
+        # ===================== ИНТЕГРАЦИЯ: Построение промпта =====================
+        final_prompt = prompt
+        if INTEGRATION_AVAILABLE and self.prompt_builder and context_dict:
+            try:
+                if event_type == EventType.KILL:
+                    final_prompt = self.prompt_builder.build_kill_prompt(context_dict, event_type.value)
+                    logger.debug(f"📝 Промпт килла: {final_prompt[:50]}...")
+                elif event_type == EventType.DEATH:
+                    final_prompt = self.prompt_builder.build_damage_prompt(context_dict)
+                    logger.debug(f"📝 Промпт смерти: {final_prompt[:50]}...")
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка prompt_builder: {e}")
+                final_prompt = prompt
         
         # Генерация ответа
         if self.fallback_mode or not self.client:
@@ -439,7 +520,7 @@ class IrisBrain:
             try:
                 # Подготовка контекста и сообщений
                 context = self._get_context_string()
-                messages = self._build_messages(prompt, context)
+                messages = self._build_messages(final_prompt, context)
                 
                 # Вызов API Groq
                 start_time = time.time()
@@ -458,19 +539,35 @@ class IrisBrain:
                 response = response_obj.choices[0].message.content.strip()
                 
                 # Логирование
-                logger.info(f"LLM ответ за {elapsed:.2f}с: {response[:50]}...")
+                logger.info(f"✅ LLM ответ за {elapsed:.2f}с: {response[:50]}...")
                 self.stats['llm_responses'] += 1
                 
             except Exception as e:
-                logger.error(f"Ошибка генерации LLM: {e}")
+                logger.error(f"❌ Ошибка генерации LLM: {e}")
                 response = self._generate_fallback_response(event_type)
                 self.stats['errors'] += 1
                 self.stats['fallback_responses'] += 1
         
         # Сохранение в историю
         if response:
-            self._add_to_history("user", prompt)
+            self._add_to_history("user", final_prompt)
             self._add_to_history("assistant", response)
+            
+            # ===================== ИНТЕГРАЦИЯ: Определение эмоции и озвучка =====================
+            if INTEGRATION_AVAILABLE and self.tts_engine:
+                try:
+                    emotion = self._detect_emotion(event_type, context_dict, priority)
+                    logger.info(f"😊 Эмоция: {emotion}")
+                    
+                    # Озвучка через TTS
+                    self.tts_engine.speak(
+                        response,
+                        emotion=emotion,
+                        priority=(priority.value >= 75)
+                    )
+                    logger.info(f"🔊 Озвучка отправлена ({emotion})")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка TTS: {e}")
             
             # Обновление статистики
             self.stats['total_responses'] += 1
@@ -481,6 +578,44 @@ class IrisBrain:
             self._mark_responded(event_type)
         
         return response
+    
+    def _detect_emotion(self, event_type: EventType, context: Dict, priority) -> str:
+        """
+        Определение эмоции по типу события и контексту
+        
+        Args:
+            event_type: Тип события
+            context: Контекст события
+            priority: Приоритет события
+            
+        Returns:
+            str: Название эмоции
+        """
+        if event_type == EventType.KILL:
+            if context:
+                round_kills = context.get('round_kills', 1)
+                if round_kills >= 5:
+                    return 'excited'  # ACE!
+                elif round_kills >= 3:
+                    return 'excited'  # Triple+
+                elif context.get('kill_streak', 1) >= 10:
+                    return 'proud'    # Mega streak
+            return 'happy'
+        
+        elif event_type == EventType.DEATH:
+            return 'supportive'
+        
+        elif event_type == EventType.ROUND_END:
+            if context and context.get('round_won'):
+                return 'excited'
+            else:
+                return 'supportive'
+        
+        elif event_type == EventType.BOMB_PLANTED:
+            return 'tense'
+        
+        else:
+            return 'neutral'
     
     def _add_to_history(self, role: str, content: str):
         """Добавление сообщения в историю"""
@@ -518,16 +653,18 @@ class IrisBrain:
         elif mood == Mood.EXCITED and random.random() > 0.5:
             response = response.upper()[:1] + response[1:] + "!!!"
         
-        logger.debug(f"Заглушка для {event_str}: {response}")
+        logger.debug(f"📦 Заглушка для {event_str}: {response}")
         return response
     
     # ===================== РЕАКЦИИ НА ИГРОВЫЕ СОБЫТИЯ =====================
-    def react_to_kill(self, kill_data: Dict) -> Optional[str]:
+    def react_to_kill(self, kill_data: Dict, player=None, cs2_gsi=None) -> Optional[str]:
         """
         Реакция на убийство, совершённое стримером
         
         Args:
             kill_data: Данные об убийстве
+            player: Объект игрока
+            cs2_gsi: Объект CS2 GSI
             
         Returns:
             Optional[str]: Реакция или None
@@ -580,15 +717,17 @@ class IrisBrain:
             'time': time.time()
         })
         
-        # Генерация ответа
-        return self.generate_response(prompt, EventType.KILL)
+        # Генерация ответа (с интеграцией)
+        return self.generate_response(prompt, EventType.KILL, player=player, cs2_gsi=cs2_gsi)
     
-    def react_to_death(self, death_data: Dict) -> Optional[str]:
+    def react_to_death(self, death_data: Dict, player=None, cs2_gsi=None) -> Optional[str]:
         """
         Реакция на смерть стримера
         
         Args:
             death_data: Данные о смерти
+            player: Объект игрока
+            cs2_gsi: Объект CS2 GSI
             
         Returns:
             Optional[str]: Реакция или None
@@ -654,7 +793,35 @@ class IrisBrain:
         if self.player_stats.kd_ratio < 0.5:
             self.stream_context['mood'] = Mood.SUPPORTIVE
         
-        return self.generate_response(prompt, EventType.DEATH)
+        return self.generate_response(prompt, EventType.DEATH, player=player, cs2_gsi=cs2_gsi)
+    
+    def react_to_low_health(self, health: int, player=None, cs2_gsi=None) -> Optional[str]:
+        """
+        Реакция на критический уровень здоровья
+        
+        Args:
+            health: Текущее здоровье
+            player: Объект игрока
+            cs2_gsi: Объект CS2 GSI
+            
+        Returns:
+            Optional[str]: Реакция или None
+        """
+        if health <= 0:
+            return None
+        
+        if health <= 15:
+            prompt = f"ВНИМАНИЕ! HP критичный ({health})! Нужно срочно в укрытие!"
+            self.stream_context['mood'] = Mood.TENSE
+        elif health <= 30:
+            prompt = f"HP низкий ({health}). Осторожнее, укройся!"
+            self.stream_context['mood'] = Mood.SUPPORTIVE
+        elif health <= 50:
+            prompt = f"Здоровье не в норме ({health}). Берегись."
+        else:
+            return None
+        
+        return self.generate_response(prompt, EventType.DEATH, player=player, cs2_gsi=cs2_gsi)
     
     def react_to_round_end(self, round_data: Dict) -> Optional[str]:
         """
@@ -756,144 +923,6 @@ class IrisBrain:
         
         return self.generate_response(prompt, EventType.BOMB_EXPLODED)
     
-    # ===================== РЕАКЦИИ НА СОБЫТИЯ СТРИМА =====================
-    def react_to_donation(self, donation_data: Dict) -> str:
-        """
-        Реакция на донат
-        
-        Args:
-            donation_data: Данные о донате
-            
-        Returns:
-            str: Реакция с благодарностью
-        """
-        username = donation_data.get('username', 'Аноним')
-        amount = donation_data.get('amount', 0)
-        currency = donation_data.get('currency', 'рублей')
-        message = donation_data.get('message', '')
-        
-        # Форматирование суммы
-        if amount >= 1000:
-            amount_str = f"{amount:,} {currency}".replace(',', ' ')
-        else:
-            amount_str = f"{amount} {currency}"
-        
-        # Построение промпта
-        prompt = f"Зритель {username} только что задонатил {amount_str}!"
-        
-        if message:
-            prompt += f"\nСообщение: \"{message}\""
-        
-        prompt += "\nПоблагодари его искренне и тепло. Если в сообщении есть вопрос или тема — отреагируй на неё."
-        
-        # Обновление настроения
-        self.stream_context['mood'] = Mood.HAPPY
-        
-        return self.generate_response(prompt, EventType.DONATION, force=True)
-    
-    def react_to_subscription(self, sub_data: Dict) -> str:
-        """
-        Реакция на подписку
-        
-        Args:
-            sub_data: Данные о подписке
-            
-        Returns:
-            str: Реакция с благодарностью
-        """
-        username = sub_data.get('username', 'Аноним')
-        months = sub_data.get('months', 1)
-        tier = sub_data.get('tier', 'Tier 1')
-        is_gift = sub_data.get('is_gift', False)
-        gifter = sub_data.get('gifter', '')
-        
-        if is_gift and gifter:
-            prompt = f"{gifter} подарил подписку {username}! Каждый щедрый зритель делает стрим лучше! Поблагодари обоих!"
-        elif months > 1:
-            prompt = f"{username} продлил подписку уже на {months} месяц! Это настоящая преданность! Поблагодари за лояльность."
-        else:
-            prompt = f"Новый подписчик {username}! Добро пожаловать в наше сообщество! Поприветствуй его тепло."
-        
-        # Обновление настроения
-        self.stream_context['mood'] = Mood.HAPPY
-        
-        return self.generate_response(prompt, EventType.SUBSCRIPTION, force=True)
-    
-    def react_to_raid(self, raid_data: Dict) -> str:
-        """
-        Реакция на рейд
-        
-        Args:
-            raid_data: Данные о рейде
-            
-        Returns:
-            str: Эпическая реакция
-        """
-        username = raid_data.get('username', 'Аноним')
-        viewers = raid_data.get('viewers', 0)
-        
-        prompt = f"ВНИМАНИЕ! РЕЙД! {username} прибывает на стрим с {viewers} зрителями! "
-        prompt += "Эпично поприветствуй новых зрителей и поблагодари за рейд!"
-        
-        # Обновление настроения
-        self.stream_context['mood'] = Mood.EXCITED
-        
-        return self.generate_response(prompt, EventType.RAID, force=True)
-    
-    def react_to_chat_message(self, chat_data: Dict) -> Optional[str]:
-        """
-        Реакция на сообщение в чате
-        
-        Args:
-            chat_data: Данные о сообщении
-            
-        Returns:
-            Optional[str]: Ответ или None
-        """
-        username = chat_data.get('username', 'Аноним')
-        message = chat_data.get('message', '')
-        
-        if not message or len(message.strip()) < 2:
-            return None
-        
-        # Проверка, обращается ли пользователь к Ирис
-        iris_mentioned = any(word in message.lower() for word in [
-            'ирис', 'iris', 'ириска', 'иришечка', 'iris brain'
-        ])
-        
-        # Проверка на команду
-        is_command = message.startswith('!') and len(message) > 2
-        
-        # Определение, нужно ли отвечать
-        should_respond = False
-        
-        if iris_mentioned:
-            should_respond = True
-            logger.info(f"Обнаружено обращение к Ирис от {username}")
-        elif is_command:
-            # Игнорируем команды чата
-            return None
-        elif random.random() < 0.15:  # 15% шанс ответить на случайное сообщение
-            should_respond = True
-        
-        if not should_respond:
-            return None
-        
-        # Построение промпта
-        prompt = f"Зритель {username} написал в чат: \"{message}\""
-        
-        if iris_mentioned:
-            prompt += "\nОн обратился к тебе напрямую! Ответь вежливо и по делу."
-        else:
-            prompt += "\nМожешь ответить кратко, если есть что сказать интересного."
-        
-        # Проверка кулдауна
-        if not self._can_respond(EventType.CHAT_MESSAGE):
-            logger.debug(f"Пропуск ответа {username} (кулдаун чата)")
-            return None
-        
-        return self.generate_response(prompt, EventType.CHAT_MESSAGE)
-    
     # ===================== ВЗАИМОДЕЙСТВИЕ С ПОЛЬЗОВАТЕЛЕМ =====================
     def chat_with_user(self, user_message: str, username: str = "стример") -> str:
         """
@@ -919,156 +948,9 @@ class IrisBrain:
         elif '?' in user_message:
             event_type = EventType.COMMAND
         else:
-            event_type = EventType.GENERAL
+            event_type = EventType.CHAT_MESSAGE
         
         return self.generate_response(prompt, event_type, force=True)
-    
-    def generate_random_comment(self) -> Optional[str]:
-        """
-        Генерация случайного комментария о стриме
-        
-        Returns:
-            Optional[str]: Комментарий или None
-        """
-        # Проверка кулдауна
-        if not self._can_respond(EventType.RANDOM_COMMENT):
-            return None
-        
-        # Шанс сгенерировать комментарий
-        if random.random() > 0.25:  # 25% шанс
-            return None
-        
-        # Выбор типа случайного комментария
-        comment_type = random.choice(['game', 'stream', 'question', 'observation'])
-        
-        if comment_type == 'game':
-            prompts = [
-                "Сгенерируй короткий комментарий о текущей игровой ситуации.",
-                "Что ты думаешь о текущей стратегии команды?",
-                "Прокомментируй текущий счёт и перспективы матча.",
-                "Заметка об игре или тактике."
-            ]
-        elif comment_type == 'stream':
-            prompts = [
-                "Скажи что-нибудь о атмосфере стрима сегодня.",
-                "Прокомментируй качество контента или настроение.",
-                "Заметка о стриме или зрителях.",
-                "Случайная мысль о сегодняшнем эфире."
-            ]
-        elif comment_type == 'question':
-            prompts = [
-                "Задай стримеру интересный вопрос о его тактике.",
-                "Спроси что-нибудь о планах на игру.",
-                "Интересный вопрос о CS2 или текущем матче.",
-                "Спроси мнение о последнем изменении в игре."
-            ]
-        else:  # observation
-            prompts = [
-                "Поделись наблюдением о последних раундах.",
-                "Заметка о статистике игрока.",
-                "Наблюдение о карте или позиционировании.",
-                "Комментарий о мета-игре или трендах."
-            ]
-        
-        prompt = random.choice(prompts)
-        
-        # Обновление настроения для разнообразия
-        self.stream_context['mood'] = random.choice([
-            Mood.NEUTRAL, Mood.FUNNY, Mood.SUPPORTIVE
-        ])
-        
-        return self.generate_response(prompt, EventType.RANDOM_COMMENT)
-    
-    # ===================== УПРАВЛЕНИЕ КОНТЕКСТОМ =====================
-    def update_context(self, 
-                      map_name: Optional[str] = None,
-                      ct_score: Optional[int] = None,
-                      t_score: Optional[int] = None,
-                      round_number: Optional[int] = None,
-                      player_stats: Optional[Dict] = None,
-                      event: Optional[Dict] = None,
-                      chat_activity: Optional[str] = None,
-                      viewer_count: Optional[int] = None):
-        """
-        Обновление контекста стрима
-        
-        Args:
-            map_name: Название карты
-            ct_score: Счёт команды CT
-            t_score: Счёт команды T
-            round_number: Номер раунда
-            player_stats: Статистика игрока
-            event: Событие для добавления в историю
-            chat_activity: Активность чата (slow/normal/active/hyper)
-            viewer_count: Количество зрителей
-        """
-        if map_name:
-            self.game_state.map_name = map_name
-            self.stream_context['current_map'] = map_name
-        
-        if ct_score is not None:
-            self.game_state.score_ct = ct_score
-            self.stream_context['score']['ct'] = ct_score
-        
-        if t_score is not None:
-            self.game_state.score_t = t_score
-            self.stream_context['score']['t'] = t_score
-        
-        if round_number is not None:
-            self.stream_context['round_number'] = round_number
-        
-        if player_stats:
-            # Обновление статистики игрока
-            for key, value in player_stats.items():
-                if hasattr(self.player_stats, key):
-                    setattr(self.player_stats, key, value)
-            
-            # Расчёт K/D ratio
-            if self.player_stats.deaths > 0:
-                self.player_stats.kd_ratio = self.player_stats.kills / self.player_stats.deaths
-            elif self.player_stats.kills > 0:
-                self.player_stats.kd_ratio = self.player_stats.kills
-        
-        if event:
-            self.stream_context['recent_events'].append(event)
-        
-        if chat_activity:
-            self.stream_context['chat_activity'] = chat_activity
-        
-        if viewer_count is not None:
-            self.stream_context['viewer_count'] = viewer_count
-            
-            # Автоматическая настройка настроения на основе зрителей
-            if viewer_count > 1000:
-                self.stream_context['mood'] = Mood.EXCITED
-            elif viewer_count > 100:
-                self.stream_context['mood'] = Mood.HAPPY
-    
-    def update_game_state(self, **kwargs):
-        """
-        Обновление состояния игры
-        
-        Args:
-            **kwargs: Поля GameState для обновления
-        """
-        for key, value in kwargs.items():
-            if hasattr(self.game_state, key):
-                setattr(self.game_state, key, value)
-    
-    def update_player_stats(self, **kwargs):
-        """
-        Обновление статистики игрока
-        
-        Args:
-            **kwargs: Поля PlayerStats для обновления
-        """
-        for key, value in kwargs.items():
-            if hasattr(self.player_stats, key):
-                setattr(self.player_stats, key, value)
-        
-        # Пересчёт K/D ratio
-        if self.player_stats.deaths > 0:
-            self.player_stats.kd_ratio = self.player_stats.kills / self.player_stats.deaths
     
     # ===================== УТИЛИТЫ И СТАТИСТИКА =====================
     def get_stats(self) -> Dict:
@@ -1086,6 +968,7 @@ class IrisBrain:
         stats['current_mood'] = self.stream_context['mood'].value
         stats['uptime'] = time.time() - stats['start_time']
         stats['responses_per_minute'] = stats['total_responses'] / (stats['uptime'] / 60) if stats['uptime'] > 0 else 0
+        stats['integration_available'] = INTEGRATION_AVAILABLE
         
         # Текущее состояние игры
         stats['game_state'] = {
@@ -1099,75 +982,6 @@ class IrisBrain:
         
         return stats
     
-    def save_conversation(self, filename: str = None):
-        """
-        Сохранение истории разговора в файл
-        
-        Args:
-            filename: Имя файла (если None, генерируется автоматически)
-        """
-        if filename is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"iris_conversation_{timestamp}.json"
-        
-        conversation_data = []
-        for msg in self.conversation_history:
-            conversation_data.append({
-                'role': msg.role,
-                'content': msg.content,
-                'timestamp': msg.timestamp,
-                'time_str': datetime.fromtimestamp(msg.timestamp).strftime("%H:%M:%S")
-            })
-        
-        try:
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(conversation_data, f, ensure_ascii=False, indent=2)
-            logger.info(f"История сохранена в {filename}")
-        except Exception as e:
-            logger.error(f"Ошибка сохранения истории: {e}")
-    
-    def load_conversation(self, filename: str):
-        """
-        Загрузка истории разговора из файла
-        
-        Args:
-            filename: Имя файла
-        """
-        try:
-            with open(filename, 'r', encoding='utf-8') as f:
-                conversation_data = json.load(f)
-            
-            self.conversation_history.clear()
-            for msg_data in conversation_data:
-                self.conversation_history.append(
-                    ConversationMessage(
-                        role=msg_data['role'],
-                        content=msg_data['content'],
-                        timestamp=msg_data['timestamp']
-                    )
-                )
-            
-            logger.info(f"Загружено {len(conversation_data)} сообщений из {filename}")
-        except Exception as e:
-            logger.error(f"Ошибка загрузки истории: {e}")
-    
-    def clear_history(self):
-        """Очистка истории разговора"""
-        self.conversation_history.clear()
-        self.stream_context['recent_events'].clear()
-        logger.info("История очищена")
-    
-    def reset_stats(self):
-        """Сброс статистики"""
-        self.stats = {
-            'total_responses': 0,
-            'llm_responses': 0,
-            'fallback_responses': 0,
-            'errors': 0,
-            'start_time': time.time()
-        }
-        logger.info("Статистика сброшена")
-    
     def set_mood(self, mood: Mood):
         """
         Установка настроения Ирис
@@ -1176,37 +990,42 @@ class IrisBrain:
             mood: Настроение из enum Mood
         """
         self.stream_context['mood'] = mood
-        logger.info(f"Настроение установлено: {mood.value}")
+        logger.info(f"😊 Настроение установлено: {mood.value}")
     
-    def adjust_cooldown(self, event_type: EventType, cooldown: float):
-        """
-        Настройка кулдауна для типа события
+    def shutdown(self):
+        """Корректное завершение работы"""
+        logger.info("🛑 Завершение работы Iris Brain...")
         
-        Args:
-            event_type: Тип события
-            cooldown: Новый кулдаун в секундах
-        """
-        event_str = event_type.value if isinstance(event_type, EventType) else event_type
-        self.cooldowns[event_str] = cooldown
-        logger.info(f"Кулдаун {event_str} установлен на {cooldown}с")
+        if INTEGRATION_AVAILABLE and self.tts_engine:
+            try:
+                self.tts_engine.stop()
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка при остановке TTS: {e}")
+        
+        logger.info("✅ Iris Brain остановлена")
 
 
 # ===================== ПРИМЕР ИСПОЛЬЗОВАНИЯ =====================
 if __name__ == "__main__":
-    print("=== ТЕСТИРОВАНИЕ IRIS BRAIN ===")
+    print("""
+    🎯 IRIS BRAIN v2.1 - ИНТЕГРИРОВАННАЯ
+    
+    ✅ Компоненты интеграции:
+    - context_builder (контекст)
+    - prompt_builder (промпты)
+    - iris_smart_engine (приоритеты)
+    - tts_engine (озвучка)
+    """)
     
     # Инициализация
     iris = IrisBrain()
     
     print(f"Режим заглушки: {iris.fallback_mode}")
+    print(f"Интеграция доступна: {INTEGRATION_AVAILABLE}")
     print(f"Модель: {iris.model}")
     
     # Тестовые вызовы
-    print("\n1. Тест случайного комментария:")
-    comment = iris.generate_random_comment()
-    print(f"Результат: {comment}")
-    
-    print("\n2. Тест реакции на убийство:")
+    print("\n1️⃣ Тест реакции на убийство:")
     kill_response = iris.react_to_kill({
         'weapon': 'ak47',
         'headshot': True,
@@ -1215,14 +1034,13 @@ if __name__ == "__main__":
     })
     print(f"Результат: {kill_response}")
     
-    print("\n3. Тест диалога:")
-    chat_response = iris.chat_with_user("Привет, Ирис! Как твои дела?", "Тестер")
+    print("\n2️⃣ Тест диалога:")
+    chat_response = iris.chat_with_user("Привет, Ирис! Как дела?", "Тестер")
     print(f"Результат: {chat_response}")
     
-    print("\n4. Получение статистики:")
+    print("\n3️⃣ Статистика:")
     stats = iris.get_stats()
     print(f"Всего ответов: {stats['total_responses']}")
-    print(f"Ответов LLM: {stats['llm_responses']}")
-    print(f"Заглушек: {stats['fallback_responses']}")
+    print(f"Интеграция: {'✅ Доступна' if stats['integration_available'] else '❌ Недоступна'}")
     
-    print("\n=== ТЕСТ ЗАВЕРШЕН ===")
+    print("\n✅ ТЕСТ ЗАВЕРШЕН")
