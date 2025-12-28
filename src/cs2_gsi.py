@@ -1,10 +1,29 @@
 import json
 import time
 import threading
+import logging
+import sys
+import os
 from flask import Flask, request, jsonify
 from dataclasses import dataclass, field
 from typing import Optional, Callable, Dict, List, Any, Tuple
 from collections import deque
+
+# Настройка кодировки для Windows
+if sys.platform == 'win32':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    sys.stdout.reconfigure(encoding='utf-8')
+
+# Логирование
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [%(name)s] - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('cs2_gsi.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # ════════════════════════════════════════════════════════════
 # DATACLASSES
@@ -104,7 +123,7 @@ class CS2GameStateIntegration:
                     self._process_game_state(data)
                 return jsonify({"status": "ok"})
             except Exception as e:
-                print(f"[CS2 GSI] Ошибка обработки: {e}")
+                logger.error(f"[CS2 GSI] Ошибка обработки: {e}")
                 return jsonify({"status": "error"}), 500
 
         @self.app.route('/health', methods=['GET'])
@@ -241,64 +260,7 @@ class CS2GameStateIntegration:
             if self.map.phase == 'gameover':
                 self._emit_match_end_event()
         
-        # ════════════════════════════════════════════════════════════
-        # ✅ НОВОЕ: ОБРАБОТКА ВСЕХ ИГРОКОВ И ИХ ПОЗИЦИЙ
-        # ════════════════════════════════════════════════════════════
-        all_players_data = data.get('allplayers', {})
-        if all_players_data:
-            self.all_players_positions = {}
-            self.all_players_states = {}
-            
-            for steamid, player_info in all_players_data.items():
-                if steamid == self.player.name:  # Пропускаем себя
-                    continue
-                
-                # Позиции врагов
-                position = player_info.get('position', {})
-                self.all_players_positions[steamid] = {
-                    'x': position.get('x', 0),
-                    'y': position.get('y', 0),
-                    'z': position.get('z', 0),
-                    'team': player_info.get('team', 'unknown'),
-                    'name': player_info.get('name', 'unknown')
-                }
-                
-                # Статус всех
-                state = player_info.get('state', {})
-                self.all_players_states[steamid] = {
-                    'alive': state.get('health', 0) > 0,
-                    'health': state.get('health', 0),
-                    'team': player_info.get('team', 'unknown'),
-                    'name': player_info.get('name', 'unknown')
-                }
-        
-        # ════════════════════════════════════════════════════════════
-        # ✅ НОВОЕ: ОБРАБОТКА ГРЕНАД
-        # ════════════════════════════════════════════════════════════
-        all_grenades_data = data.get('allgrenades', {})
-        if all_grenades_data:
-            self.all_grenades = []
-            for grenade_id, grenade_info in all_grenades_data.items():
-                self.all_grenades.append({
-                    'type': grenade_info.get('type', 'unknown'),
-                    'position': {
-                        'x': grenade_info.get('position', {}).get('x', 0),
-                        'y': grenade_info.get('position', {}).get('y', 0),
-                        'z': grenade_info.get('position', {}).get('z', 0)
-                    },
-                    'team': grenade_info.get('team', 'unknown'),
-                    'owner': grenade_info.get('owner', 'unknown')
-                })
-        
-        # ════════════════════════════════════════════════════════════
-        # ✅ НОВОЕ: ОБРАБОТКА ВРЕМЕНИ РАУНДА
-        # ════════════════════════════════════════════════════════════
-        phase_countdowns = data.get('phase_countdowns', {})
-        if phase_countdowns:
-            # phase_countdowns содержит информацию о времени разных фаз
-            self.phase_countdown = phase_countdowns.get('phase', 0)
-        
-        # ✅ Сохраняем текущее состояние как предыдущее
+        # Сохраняем текущее состояние как предыдущее
         self.previous_state = data
 
     # ════════════════════════════════════════════════════════════
@@ -312,123 +274,37 @@ class CS2GameStateIntegration:
             try:
                 self.event_callback(event)
             except Exception as e:
-                print(f"[CS2 GSI] Ошибка callback: {e}")
+                logger.error(f"[CS2 GSI] Ошибка callback: {e}")
 
     def _emit_kill_event(self, kill_count: int):
         self.kill_streak += kill_count
-        event_data = {
-            'kills_this_action': kill_count,
-            'round_kills': self.player.round_kills,
-            'total_kills': self.player.kills,
-            'kill_streak': self.kill_streak,
-            'headshot': self.player.round_killhs > 0,
-            'weapon': self.player.weapon,
-            'clutch': self.clutch_situation,
-            'clutch_enemies': self.clutch_enemies
-        }
-        
-        if self.player.round_kills >= 5:
-            event_data['ace'] = True
-            self._emit_event('ace', event_data)
-        elif self.player.round_kills >= 4:
-            self._emit_event('quadra_kill', event_data)
-        elif self.player.round_kills >= 3:
-            self._emit_event('triple_kill', event_data)
-        elif self.player.round_kills >= 2:
-            self._emit_event('double_kill', event_data)
-        else:
-            self._emit_event('kill', event_data)
+        self._emit_event('kill', {'kills': kill_count, 'round_kills': self.player.round_kills})
 
     def _emit_death_event(self):
         self.kill_streak = 0
-        event_data = {
-            'total_deaths': self.player.deaths,
-            'kd_ratio': self.player.kills / max(1, self.player.deaths),
-            'round': self.map.round
-        }
-        self._emit_event('death', event_data)
+        self._emit_event('death', {'total_deaths': self.player.deaths})
 
     def _emit_damage_event(self, damage: int):
-        event_data = {
-            'damage': damage,
-            'current_health': self.player.health,
-            'armor': self.player.armor
-        }
-        
-        if self.player.health <= 25:
-            self._emit_event('low_health', event_data)
-        elif damage >= 50:
-            self._emit_event('heavy_damage', event_data)
+        self._emit_event('damage', {'damage': damage, 'health': self.player.health})
 
     def _emit_round_start_event(self):
         self.kill_streak = 0
-        self.round_start_kills = self.player.kills
-        self.clutch_situation = False
-        event_data = {
-            'round': self.map.round,
-            'ct_score': self.map.ct_score,
-            't_score': self.map.t_score,
-            'money': self.player.money,
-            'equip_value': self.player.equip_value
-        }
-        
-        if self.player.money < 2000:
-            event_data['eco_round'] = True
-        
-        self._emit_event('round_start', event_data)
+        self._emit_event('round_start', {'round': self.map.round})
 
     def _emit_round_end_event(self):
-        round_kills = self.player.kills - self.round_start_kills
-        event_data = {
-            'round': self.map.round,
-            'win_team': self.round.win_team,
-            'player_team': self.player.team,
-            'won': self.round.win_team.lower() == self.player.team.lower() if self.round.win_team else False,
-            'round_kills': round_kills,
-            'clutch_win': self.clutch_situation and round_kills > 0
-        }
-        
-        if round_kills >= 3:
-            event_data['mvp_candidate'] = True
-        
-        self._emit_event('round_end', event_data)
+        self._emit_event('round_end', {'round': self.map.round})
 
     def _emit_bomb_planted_event(self):
-        event_data = {
-            'round': self.map.round,
-            'player_team': self.player.team
-        }
-        self._emit_event('bomb_planted', event_data)
+        self._emit_event('bomb_planted', {})
 
     def _emit_bomb_defused_event(self):
-        event_data = {
-            'round': self.map.round,
-            'player_team': self.player.team,
-            'ninja_defuse': self.player.health <= 10
-        }
-        self._emit_event('bomb_defused', event_data)
+        self._emit_event('bomb_defused', {})
 
     def _emit_bomb_exploded_event(self):
-        event_data = {
-            'round': self.map.round,
-            'player_team': self.player.team
-        }
-        self._emit_event('bomb_exploded', event_data)
+        self._emit_event('bomb_exploded', {})
 
     def _emit_match_end_event(self):
-        event_data = {
-            'ct_score': self.map.ct_score,
-            't_score': self.map.t_score,
-            'player_team': self.player.team,
-            'won': (self.player.team == 'CT' and self.map.ct_score > self.map.t_score) or
-                   (self.player.team == 'T' and self.map.t_score > self.map.ct_score),
-            'kills': self.player.kills,
-            'deaths': self.player.deaths,
-            'assists': self.player.assists,
-            'mvps': self.player.mvps,
-            'map': self.map.name
-        }
-        self._emit_event('match_end', event_data)
+        self._emit_event('match_end', {'map': self.map.name})
 
     # ════════════════════════════════════════════════════════════
     # УПРАВЛЕНИЕ СЕРВЕРОМ
@@ -444,158 +320,55 @@ class CS2GameStateIntegration:
             daemon=True
         )
         self.server_thread.start()
-        print(f"[CS2 GSI] Сервер запущен на порту {self.port}")
+        logger.info(f"[CS2 GSI] Сервер запущен на порту {self.port}")
 
     def stop(self):
         self.is_running = False
-
-    # ════════════════════════════════════════════════════════════
-    # МЕТОДЫ ПОЛУЧЕНИЯ ИНФОРМАЦИИ
-    # ════════════════════════════════════════════════════════════
 
     def get_player_stats(self) -> Dict:
         return {
             'name': self.player.name,
             'team': self.player.team,
             'health': self.player.health,
-            'armor': self.player.armor,
-            'money': self.player.money,
             'kills': self.player.kills,
-            'deaths': self.player.deaths,
-            'assists': self.player.assists,
-            'kd_ratio': round(self.player.kills / max(1, self.player.deaths), 2),
-            'mvps': self.player.mvps,
-            'score': self.player.score
+            'deaths': self.player.deaths
         }
 
     def get_match_info(self) -> Dict:
         return {
             'map': self.map.name,
-            'mode': self.map.mode,
             'round': self.map.round,
             'ct_score': self.map.ct_score,
-            't_score': self.map.t_score,
-            'phase': self.map.phase
+            't_score': self.map.t_score
         }
 
-    # ✅ НОВЫЕ МЕТОДЫ ДЛЯ АНАЛИЗА
 
-    def get_enemy_positions(self) -> List[Dict]:
-        """Получить позиции всех врагов"""
-        enemies = []
-        for steamid, pos in self.all_players_positions.items():
-            if pos['team'] != self.player.team:
-                enemies.append(pos)
-        return enemies
+def main():
+    """Главная функция для запуска CS2 GSI сервера."""
+    logger.info("\n" + "="*70)
+    logger.info("[CS2 GSI] 🎮 Counter-Strike 2 Game State Integration")
+    logger.info("="*70)
+    
+    # Инициализируем GSI
+    gsi = CS2GameStateIntegration(port=3000)
+    
+    logger.info("[CS2 GSI] ✅ Инициализирован")
+    logger.info("[CS2 GSI] 🚀 Запускаю сервер...")
+    logger.info("[CS2 GSI] 📡 Слушаю события CS2 на :3000")
+    logger.info("[CS2 GSI] ⌨️  Для выхода: Ctrl+C\n")
+    
+    gsi.start()
+    
+    try:
+        # Просто держим процесс живым
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        logger.info("\n[CS2 GSI] Остановка сервера...")
+        gsi.stop()
+    finally:
+        logger.info("[CS2 GSI] До свидания! 🎮")
 
-    def get_alive_enemies_count(self) -> int:
-        """Сколько живых врагов"""
-        count = 0
-        for steamid, state in self.all_players_states.items():
-            if state['alive'] and state['team'] != self.player.team:
-                count += 1
-        return count
 
-    def get_grenades_nearby(self, distance: float = 500) -> List[Dict]:
-        """Получить гренады рядом (в метрах)"""
-        nearby = []
-        for grenade in self.all_grenades:
-            gx, gy = grenade['position']['x'], grenade['position']['y']
-            px, py = self.player.position
-            dist = ((gx - px)**2 + (gy - py)**2)**0.5
-            if dist <= distance:
-                nearby.append(grenade)
-        return nearby
-
-    def get_player_health_status(self) -> str:
-        """Статус здоровья"""
-        if self.player.health <= 1:
-            return "critical"
-        elif self.player.health <= 15:
-            return "very_low"
-        elif self.player.health <= 30:
-            return "low"
-        elif self.player.health <= 60:
-            return "medium"
-        else:
-            return "healthy"
-
-    def get_ammo_status(self) -> str:
-        """Статус патронов"""
-        total = self.player.ammo_in_magazine + self.player.ammo_in_reserve
-        if total == 0:
-            return "empty"
-        elif total <= 3:
-            return "critical"
-        elif total <= 10:
-            return "low"
-        elif total <= 30:
-            return "medium"
-        else:
-            return "plenty"
-
-    def analyze_threat_level(self) -> int:
-        """Уровень угрозы (1-10)"""
-        threat = 5
-        
-        if self.player.health <= 15:
-            threat += 5
-        if (self.player.ammo_in_magazine + self.player.ammo_in_reserve) <= 5:
-            threat += 2
-        if self.player.money < 2000:
-            threat += 1
-        if self.get_alive_enemies_count() >= 3:
-            threat += 2
-        
-        return min(threat, 10)
-
-    def get_round_time_remaining(self) -> float:
-        """Оставшееся время раунда в секундах"""
-        return self.phase_countdown
-
-    def generate_config_file(self) -> str:
-        config = f'''\"Iris Stream Assistant v2.1\"
-{{
-	\"uri\" \"http://localhost:{self.port}/\"
-	\"timeout\" \"5.0\"
-	\"buffer\"  \"0.1\"
-	\"throttle\" \"0.1\"
-	\"heartbeat\" \"10.0\"
-	
-	\"auth\"
-	{{
-		\"token\" \"iris_stream_assistant\"
-	}}
-	
-	\"data\"
-	{{
-		\"provider\"              \"1\"
-		\"match_stats\"           \"1\"
-		\"player_id\"             \"1\"
-		\"player_state\"          \"1\"
-		\"player_match_stats\"    \"1\"
-		\"player_weapons\"        \"1\"
-		\"player_position\"       \"1\"
-		\"round\"                 \"1\"
-		\"phase_countdowns\"      \"1\"
-		\"bomb\"                  \"1\"
-		\"map\"                   \"1\"
-		\"map_round_wins\"        \"1\"
-		\"allplayers_id\"         \"1\"
-		\"allplayers_state\"      \"1\"
-		\"allplayers_match_stats\"    \"1\"
-		\"allplayers_weapons\"        \"1\"
-		\"allplayers_position\"       \"1\"
-		\"allgrenades\"           \"1\"
-	}}
-}}
-'''
-        return config
-
-    def save_config_file(self, path: str = "gamestate_integration_iris.cfg"):
-        config = self.generate_config_file()
-        with open(path, 'w') as f:
-            f.write(config)
-        print(f"[CS2 GSI] Конфиг сохранён: {path}")
-        print(f"[CS2 GSI] Скопируйте его в: /steamapps/common/Counter-Strike Global Offensive/game/csgo/cfg/")
-        return path
+if __name__ == '__main__':
+    main()
