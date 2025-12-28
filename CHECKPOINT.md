@@ -3,9 +3,34 @@
 
 ---
 
+## 📍 ОБНОВЛЕНО: 28 декабря 2025, 05:26 MSK
+
+### 🚀 НОВАЯ ФАЗА: СИСТЕМА ПАМЯТИ АКТИВИРОВАНА
+
+**Выполнено:**
+- ✅ Орфографические исправления `iris_complete_solution.py`
+- ✅ Основные документы для памяти:
+  - `PROJECT_MASTER_CONTEXT.md`
+  - `DEV_LOG.md`
+  - `NEXT_SESSION_START.md`
+  - `CHECKPOINT.md` (этот файл)
+  - `SYSTEM_MEMORY_RESTORE.md` (инструкция восстановления)
+
+**Git коммиты:**
+```
+57b4a6a1 - SYSTEM_MEMORY_RESTORE.md
+b7a0904a - CHECKPOINT.md 
+29d51008 - PROJECT_MASTER_CONTEXT.md
+a79735af - DEV_LOG.md
+c3728a0e - NEXT_SESSION_START.md
+d7f6b5dd - iris_complete_solution.py (орфография)
+```
+
+---
+
 ## 🎯 СТАТУС ПО МОДУЛЯМ (28 декабря 2025)
 
-### ✅ ПОЛНОСТЬЮ ГОТОВО (100%)
+### ✅ ПОЛНОсТЬЮ ГОТОВО (100%)
 
 | Модуль | Компонент | Файл | Статус | Дата проверки | Примечание |
 |--------|-----------|------|--------|---------------|------------|
@@ -17,7 +42,7 @@
 | **Stats** | Tracking | `src/statistics_tracker.py` | ✅ Есть | 27.12 | Статистика матчей |
 | **Achievements** | System | `src/achievements.py` | ✅ Есть | 27.12 | 11 KB кода |
 
-### 🟡 ЧАСТИЧНО ГОТОВО (нужны тесты)
+### 🟡 ЧАСтИЧНО ГОТОВО (нужны тесты)
 
 | Модуль | Компонент | Файл | Статус | Дата проверки | Что не хватает |
 |--------|-----------|------|--------|---------------|----------------|
@@ -29,229 +54,97 @@
 
 ### 🔴 НЕ ГОТОВО
 
-| Модуль | Компонент | Файл | Статус | Что нужно |
+| Модуль | Компонент | Файл | Статус | На что планируется |
 |--------|-----------|------|--------|----------|
-| **Голос** | Wake-word "Ирис" | - | 🔴 Не реализовано | Реализовать detection |
-| **Голос** | Interrupt речи | - | 🔴 Не реализовано | Механизм прерывания |
-| **OBS** | Scene control | - | 🔴 Не реализовано | Управление сценами |
-| **Кэш** | Context caching | - | 🔴 Не реализовано | Оптимизация памяти |
+| **Голос** | Wake-word "Ирис" | - | 🔴 Не реализовано | V1 |
+| **Голос** | Interrupt речи | - | 🔴 Не реализовано | V1 |
+| **OBS** | Scene control | - | 🔴 Не реализовано | V4 |
+| **Кэш** | Context caching | - | 🔴 Не реализовано | V4 |
 
 ---
 
-## 🖥️ СИСТЕМА РАЗРАБОТЧИКА
+## 🖥️ ОБОРУДОВАНИЕ
 
 ```
 ОС: Windows 10
 Процессор: Intel Core i9
 GPU: NVIDIA RTX 3080 TUF Gaming
 RAM: 16 GB
-SSD: 1 TB (основной диск)
-Паппка проекта: C:\Users\Ghost\Desktop\iris_ai
+SSD: 1 TB
+Настроенная на: Ollama (qwen3:4b-instruct)
 ```
-
-**Ollama модели установлены:**
-- qwen3:4b-instruct (2.5 GB) — **ОСНОВНАЯ**
-- qwen3:0.6b (522 MB)
-- qwen2.5-coder:1.5b, 7b, 14b
-- llama3.1:8b
-- deepseek-coder:6.7b
 
 ---
 
-## 📋 ПОСЛЕДНИЕ ДЕЙСТВИЯ (28 декабря)
+## 📋 ПОсЛЕДНИЕ ДЕЙСТВИЯ
 
-### 05:20 MSK — ОРФОГРАФИЯ + СИСТЕМА ПАМЯТИ
+### 05:26 MSK — СИСТЕМА ВОССТАНОВЛЕНИЯ МЕМОРИ АКТИВИРОВАНА
 
-**Выполнено:**
-- ✅ Исправлены ошибки в `iris_complete_solution.py`:
-  - "лаунчит" → "запускает"
-  - "катчит" → "перехватывает"
-  - "рЕШЕНИЯ" → "РЕШЕНИЯ"
-  - "Волшебные" → "Волшебное"
-- ✅ Создан `PROJECT_MASTER_CONTEXT.md` (полный план)
-- ✅ Создан `DEV_LOG.md` (история изменений)
-- ✅ Создан `NEXT_SESSION_START.md` (чеклист новых чатов)
-- ✅ Создан этот файл `CHECKPOINT.md`
+**Было добавлено:**
+- ✅ `SYSTEM_MEMORY_RESTORE.md` — инструкция для восстановления контекста
+- ✅ Новая структура файлов:
+  1. **CHECKPOINT.md** — обновляется пстоянно
+  2. **PROJECT_MASTER_CONTEXT.md** — главный план
+  3. **DEV_LOG.md** — история работ
+  4. **NEXT_SESSION_START.md** — чеклист
+  5. **SYSTEM_MEMORY_RESTORE.md** — план восстановления
 
-**Git коммиты:**
-- `d7f6b5dd` — Орфографические исправления
-- `29d51008` — Мастер-контекст
-- `a79735af` — Dev log
-- `c3728a0e` — Next session template
+**Новая составляющая система:**
+- ✅ Level 1 — GitHub Repository (источник правды)
+- ✅ Level 2 — CHECKPOINT.md (вивое состояние сейчас)
+- ✅ Level 3 — DEV_LOG.md (полная история)
+- ✅ Level 4 — PROJECT_MASTER_CONTEXT.md (стабильный эталон)
 
-### 05:17 MSK — ПРОВЕРКА ЗАПУСКА
+При потере аны от них — астальные три всегда работают. 🔐
 
-**Выполнено:**
+### 05:20 MSK — ОРФОГРАФИЯ + НОВАЯ ДОКУМЕНТАЦИЯ
+
+**Исправлено:**
+- ✅ `iris_complete_solution.py`: лаунчит → запускает, катчит → перехватывает, рЕШЕНИЯ → РЕШЕНИЯ
+
+**Создано:**
+- ✅ PROJECT_MASTER_CONTEXT.md (главный план, 7.6 KB)
+- ✅ DEV_LOG.md (история работ, 3.8 KB)
+- ✅ NEXT_SESSION_START.md (чеклист, 4.3 KB)
+
+### 05:17 MSK — ПОНТРОЛЬ ЗАПУСКА
+
 ```bash
-(venv) PS C:\Users\Ghost\Desktop\iris_ai\iris_ai> python iris_complete_solution.py
+python iris_complete_solution.py
 [IRIS] ✅ Мозг включена!
 [SERVER] 🚀 Сервер запущен на http://localhost:5000
 [GSI] 🚀 GSI listener запущен на http://localhost:3000
 [READY] 🙋 IRIS ГОТОВА!
 ```
 
-**Тесты:**
-- ✅ Ollama соединение работает за 5 сек
-- ✅ Flask сервер запускается без ошибок
-- ✅ Оба ports (3000, 5000) слушают
-- ✅ Логирование в файл (iris_complete.log)
-
 ---
 
 ## 🎯 ТЕКУЩИЕ ПРИОРИТЕТЫ
 
-### ФАЗА 2 (следующие шаги)
+### ФАЗА 2 (СЛЕДУЮЩИЕ ШАГИ)
 
-**Приоритет 1 — ГОЛОС (критичен)**
-- [ ] Тест Vosk wake-word "Ирис"
+**Приоритет 1 — ГОЛОС**
+- [ ] Тест Vosk "Ирис"
 - [ ] Тест TTS эмоций
-- [ ] Интеграция Voice Bridge в основной сервер
-- [ ] Функциональный тест: микрофон → распознавание → ответ → синтез
+- [ ] Voice Bridge функциональные тесты
 
-**Приоритет 2 — CS2 СОБЫТИЯ (критичен)**
-- [ ] Установка GSI конфига в CS2
-- [ ] Тест kill события (полные данные)
-- [ ] Тест death события
-- [ ] Тест low_health события
-- [ ] Проверка корректности маппинга оружия
-
-**Приоритет 3 — STREAM (опционально)**
-- [ ] Получить токены StreamElements
-- [ ] Тест WebSocket соединения
-- [ ] Интеграция чат → IRIS
+**Приоритет 2 — CS2 РЕАЛИЗАЦИЯ**
+- [ ] Настройка GSI конфига
+- [ ] Тест kill/death/low_health
+- [ ] Проверка данных
 
 ---
 
-## 🗂️ СТРУКТУРА РЕПОЗИТОРИЯ
+## 🙋 УКОНЧЕНО
 
+**Git commits:**
 ```
-sat_name_v6/
-├── 📋 PROJECT_MASTER_CONTEXT.md    (план проекта)
-├── 📋 DEV_LOG.md                   (история)
-├── 📋 NEXT_SESSION_START.md        (чеклист новых сессий)
-├── 📍 CHECKPOINT.md                (ЭТА ТАБЛИЦА, обновляется всегда)
-│
-├── iris_ai/                        (основной код IRIS)
-│   ├── ✅ iris_complete_solution.py      (ВСЁ В ОДНОМ ОКНЕ)
-│   ├── ✅ iris_brain_complete.py        (AI мозг Ollama)
-│   ├── ✅ iris_config.py                (конфигурация)
-│   ├── ✅ iris_server.py                (Flask сервер)
-│   ├── ✅ iris_main.py                  (тестовый запуск)
-│   ├── 🟡 iris_speech_recognition.py   (Vosk STT)
-│   ├── 🟡 iris_tts_emotion.py          (TTS Edge)
-│   ├── 🟡 iris_voice_bridge.py         (Voice STT→LLM→TTS)
-│   ├── 🟡 iris_launcher.py             (управление процессами)
-│   ├── 🟡 iris_text_input_demo.py      (текстовая демо без микро)
-│   ├── 📄 HOW_TO_RUN.md                (гайд запуска)
-│   ├── 📄 IRIS_QUICK_START.md          (быстрый старт)
-│   ├── 📄 IRIS_SERVER_README.md        (документация API)
-│   ├── ✅ test_server_examples.py      (9 тестов API)
-│   ├── 📄 iris_tts_emotion.py          (демонстрация эмоций)
-│   ├── 📄 desktop_control.py           (управление ПК)
-│   ├── 📄 memory_manager.py            (управление памятью)
-│   └── 📄 voice_recorder.py            (запись голоса)
-│
-├── src/                            (исходные модули)
-│   ├── ✅ iris_brain.py                (основной мозг 54KB)
-│   ├── 🟡 cs2_gsi.py                   (Game State Integration 26KB)
-│   ├── ✅ achievements.py              (достижения 11KB)
-│   ├── ✅ session_memory.py            (память сессии 20KB)
-│   ├── ✅ statistics_tracker.py        (статистика 24KB)
-│   ├── 🟡 streamelements_client.py    (StreamElements 13KB)
-│   ├── ✅ prompt_builder.py            (построение промптов 9KB)
-│   ├── ✅ context_builder.py           (контекст 5KB)
-│   ├── ✅ tts_engine.py                (TTS ядро 23KB)
-│   ├── ✅ voice_input.py               (голосовой ввод 38KB)
-│   ├── ✅ voice_recognition.py         (распознавание 6KB)
-│   ├── ✅ windows_audio.py             (аудио Windows 10KB)
-│   ├── ✅ queue_manager.py             (очередь событий 6KB)
-│   ├── ✅ iris_smart_engine.py         (умный движок 7KB)
-│   ├── ✅ iris_visual.py               (визуализация 19KB)
-│   └── 📂 utils/                       (утилиты)
-│       └── 📂 iris_core/               (ядро)
-│
-├── docs/                           (документация)
-├── README.md                       (основное описание)
-├── VOICE_SETUP.md                  (настройка голоса)
-├── IRIS_TTS_README.md              (документация TTS)
-└── requirements.txt                (зависимости)
+57b4a6a1 - System recovery + Checkpoint
+d7f6b5dd - Spelling fixes
 ```
 
----
+**Контекст:** 🟢 **ПОНОВНО ЗАЩИЩЕН** ЧЕтЫрьмя уровнями.
 
-## 🔐 КРИТИЧНЫЕ ФАЙЛЫ ДЛЯ ПАМЯТИ
-
-**ВСЕГДА КОПИРУЙ В НОВЫЙ ЧАТ:**
-1. `PROJECT_MASTER_CONTEXT.md` — полный план
-2. `DEV_LOG.md` — история работ
-3. `CHECKPOINT.md` — этот файл (текущее состояние)
-4. `NEXT_SESSION_START.md` — чеклист
-
-**Если случится потеря контекста:**
-- Открыть эти 4 файла из GitHub
-- Прочитать по порядку
-- Продолжить с того же места
-
----
-
-## 📊 МЕТРИКИ ПРОЕКТА
-
-| Метрика | Значение |
-|---------|----------|
-| **Всего строк кода** | ~1,500+ строк |
-| **Модулей** | 25+ файлов |
-| **API endpoints** | 5 (health, event, say, context, info) |
-| **Ollama модели** | 7 установленных |
-| **Готовность ядра** | 100% |
-| **Готовность голоса** | 50% (нужны тесты) |
-| **Готовность CS2** | 80% (готово, нужны тесты) |
-| **Готовность стрима** | 30% (нужны токены) |
-
----
-
-## 🛠️ КОМАНДЫ БЫСТРОГО ДОСТУПА
-
-```bash
-# Запуск IRIS
-cd iris_ai && python iris_complete_solution.py
-
-# Проверка здоровья
-curl http://localhost:5000/health
-
-# Отправить событие
-curl -X POST http://localhost:5000/event \
-  -H "Content-Type: application/json" \
-  -d '{"type": "kill", "kills": 3, "weapon": "AWP"}'
-
-# Задать вопрос
-curl -X POST http://localhost:5000/say \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Как дела?"}'
-```
-
----
-
-## ⚠️ ИЗВЕСТНЫЕ ОГРАНИЧЕНИЯ
-
-1. **Windows-only** для некоторых компонентов (audio control)
-2. **Vosk не работает идеально** на русском (~85% accuracy)
-3. **StreamElements требует API токены** (не интегрировано)
-4. **Memory не персистируется** между сеансами
-5. **OBS управление не реализовано**
-
----
-
-## 🎯 ВЕРСИОНИРОВАНИЕ
-
-**Текущая версия: V0 (CORE)**
-- ✅ V0 — Ядро (LLM + API) — ГОТОВО
-- 🟡 V1 — Голос (Vosk + TTS) — В РАБОТЕ
-- 🟡 V2 — CS2 интеграция — ГОТОВО К ТЕСТАМ
-- 🔴 V3 — StreamElements — НА СЛЕДУЮЩИЕ ЭТАПЕ
-- 🔴 V4 — Продвинутые фичи — ПЛАНИРУЕТСЯ
-
----
-
-**Последнее обновление:** 28.12.2025 05:20 MSK
-**Обновил:** AI Assistant
-**Статус:** 🟢 OPERATIONAL
+**Последнее обновление:** 28.12.2025 05:26 MSK
+**Обновил:** Senior Architect AI
+**Статус:** 🙋 OPERATIONAL + PROTECTED
