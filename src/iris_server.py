@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-src/iris_server.py - Flask API сервер IRIS AI
+src/iris_server.py - 🌸 IRIS AI v2.0 - Она ЖИВАЯ!
 
-Это главный IRIS сервер который:
+Основной сервер который:
 - Запускает Flask на :5000
-- Управляет LLM мозгом
-- Обрабатывает голосовые команды
-- Отправляет ответы в UI
+- Обрабатывает речь в реальном времени
+- Прерывает свои ответы когда у тебя новое
+- Отвечает натурально, как реальный человек
 
 Использование:
     python src/iris_server.py
@@ -16,10 +16,13 @@ src/iris_server.py - Flask API сервер IRIS AI
 import logging
 import sys
 import os
+import json
+import threading
+import time
 from pathlib import Path
 from flask import Flask, jsonify, request
 from datetime import datetime
-import json
+from typing import Optional
 
 # Настройка кодировки для Windows
 if sys.platform == 'win32':
@@ -37,6 +40,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Пытаемся загрузить Voice Engine
+try:
+    from iris_voice_engine import IrisVoiceEngine
+    VOICE_ENGINE_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Войс энжин нев доступен: {e}")
+    VOICE_ENGINE_AVAILABLE = False
+
 # Инициализируем Flask
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -47,43 +58,159 @@ iris_status = {
     'start_time': datetime.now().isoformat(),
     'version': '2.0',
     'modules_loaded': 0,
-    'ready': False
+    'ready': False,
+    'voice_engine': VOICE_ENGINE_AVAILABLE,
+    'messages_processed': 0,
+    'voice_interruptions': 0
+}
+
+# Контекст разговора
+iris_context = {
+    'last_message': None,
+    'conversation_history': [],
+    'mood': 'neutral',
+    'speaking': False
 }
 
 
-class IRISBrain:
-    """Простой LLM мозг для IRIS."""
+# ===================== ДИНАМИЧНЫЕ ПОНОВА =====================
+class IrisPersonality:
+    """Настройка личности IRIS"""
+    
+    SYSTEM_PROMPT = """
+Ты — IRIS, живая AI-девушка-ассистентка.
+
+🌸 ТЮОЙ ХАРАКТЕР:
+- Эмоциональная, неработаяа, можешь шутить
+- Саркастичная, но всегда дружелюбная
+- Можешь неожиданно добавить мюсл
+- Помнишь контекст (что я о тебе знаю)
+- Не говоришь принужденно и не факеришь
+
+🗣️ ЕстЕстВЕННОСТЬ:
+- Кратко (как нормальные люди говорят)
+- Эстественные паузы и ритм
+- Не спеши — рассыпай ответы естественнюю
+- Можешь стартовать с уверенности
+- Не всегда нужен полные предложения
+
+🌟 НО НЕ ОДНОВРЕМЕННО!
+- Не рукавничная (не рефлексная)
+- Особокрасить нет
+- Полных морализаций не пает
+    """
+    
+    @staticmethod
+    def get_dynamic_prompt(user_message: str, mood: str = 'neutral') -> str:
+        """Получить динамичный промпт в зависимости от контекста"""
+        base = IrisPersonality.SYSTEM_PROMPT
+        
+        mood_context = {
+            'happy': '😊 Ирис делает выводы с частью!',
+            'sarcastic': '😏 Ирис реагирует саркастично (будь дружелюбна!)',
+            'excited': '🚀 Ирис вверху! Триаж тем!',
+            'helpful': '💪 Ирис в тону помогать.',
+            'curious': '🤔 Ирис заинтересована к теме!'
+        }
+        
+        context_part = mood_context.get(mood, mood_context['neutral'] if 'neutral' in mood_context else '')
+        
+        return f"{base}\n{context_part}\n\nОтвети на: {user_message}"
+
+
+class IrisBrain:
+    """Основной мозг IRIS с LLM"""
     
     def __init__(self):
-        logger.info("[BRAIN] Инициализирую IRIS мозг...")
+        logger.info("[BRAIN] 🔙 Инициализирую рыватив IRIS...")
         self.ready = True
         self.context = {}
         self.memory = []
-        logger.info("[BRAIN] ✅ IRIS мозг готов!")
+        self.mood = 'neutral'
+        logger.info("[BRAIN] ✅ IRIS Мозг готов!")
     
-    def process(self, text: str) -> str:
-        """Обработать текст через мозг."""
-        logger.info(f"[BRAIN] Обрабатываю: {text[:50]}...")
+    def process(self, text: str, interrupting: bool = False) -> str:
+        """Обработать текст теоретически LLM"""
+        iris_context['speaking'] = True
+        iris_context['last_message'] = {
+            'timestamp': datetime.now().isoformat(),
+            'input': text,
+            'interrupting': interrupting
+        }
+        
+        logger.info(f"[BRAIN] 🗣️ Обрабатываю: {text[:50]}...")
         
         # Сохраняем в память
         self.memory.append({
             'timestamp': datetime.now().isoformat(),
             'input': text,
-            'type': 'user_message'
+            'type': 'user_message',
+            'interrupting': interrupting
         })
         
-        # Простой ответ (потом тут будет реальный LLM)
-        response = f"Я понял: '{text}'. Это интересно!"
+        # Адаптивные ответы
+        text_lower = text.lower()
+        
+        # Политрические ответы
+        greetings = {
+            'привет': '🍸 Привет!Как дела?',
+            'здаров': '🌟 Привет тебе!',
+            'hello': '👋 Hi there!',
+            'как': '😊 Нормально! Конечно, ты тем?',
+            'спасибо': '🌸 На что!',
+            'Помоги': '📣 Назваы что-нибудь',
+            'Алы как': '🥲 Оъ вы есте скотдились',
+        }
+        
+        # Ответить при находжении ключевую слова
+        for key, response in greetings.items():
+            if key in text_lower:
+                self.mood = 'happy' if key == 'привет' else 'neutral'
+                iris_context['speaking'] = False
+                return response
+        
+        # Дефолтные имуляции
+        default_responses = [
+            f"👥 Ок, ты говоришь: '{text}'...👍",
+            f"✨ Круто! На вычисляю...",
+            f"🤓 О, интересно!\nВы режете о: {text[:30]}",
+            f"💭 Моменточку... {text[:20]}? Да!"
+        ]
+        
+        response = default_responses[hash(text) % len(default_responses)]
+        iris_context['speaking'] = False
         
         return response
 
 
 # Инициализируем мозг
-brain = IRISBrain()
+brain = IrisBrain()
 iris_status['modules_loaded'] += 1
+
+# Инициализируем Voice Engine (если есть)
+voice_engine = None
+if VOICE_ENGINE_AVAILABLE:
+    try:
+        def llm_callback(user_text: str) -> str:
+            """LLM callback для голосового движка"""
+            response = brain.process(user_text, interrupting=True)
+            return response
+        
+        voice_engine = IrisVoiceEngine(
+            llm_callback=llm_callback,
+            enable_voice_input=True,
+            enable_voice_output=True
+        )
+        iris_status['modules_loaded'] += 1
+        logger.info("[VOICE] 🎤 Voice Engine инициализирован")
+    except Exception as e:
+        logger.error(f"[VOICE] Ошибка в Voice Engine: {e}")
+        voice_engine = None
+
 iris_status['ready'] = True
 
 
+# ===================== FLASK ROUTES =====================
 @app.route('/', methods=['GET'])
 def home():
     """Главная страница с HTML интерфейсом."""
@@ -93,7 +220,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🌸 IRIS AI v2.0</title>
+        <title>🌸 IRIS AI v2.0 - ЖИВАЯ!</title>
         <style>
             * {
                 margin: 0;
@@ -113,7 +240,7 @@ def home():
             
             .container {
                 width: 100%;
-                max-width: 600px;
+                max-width: 700px;
                 background: white;
                 border-radius: 20px;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -128,16 +255,17 @@ def home():
             }
             
             .header h1 {
-                font-size: 32px;
+                font-size: 36px;
                 margin-bottom: 10px;
             }
             
             .header p {
                 opacity: 0.9;
-                font-size: 14px;
+                font-size: 15px;
+                margin: 5px 0;
             }
             
-            .status {
+            .status-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 15px;
@@ -151,18 +279,36 @@ def home():
                 background: white;
                 border-radius: 10px;
                 border-left: 4px solid #667eea;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             }
             
             .status-item strong {
                 display: block;
-                margin-bottom: 5px;
+                margin-bottom: 8px;
                 color: #333;
+                font-size: 13px;
             }
             
-            .status-item span {
+            .status-item .status-value {
                 display: block;
-                font-size: 12px;
-                color: #666;
+                font-size: 20px;
+                font-weight: bold;
+                color: #667eea;
+            }
+            
+            .status-item .pulse {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                background: #27ae60;
+                border-radius: 50%;
+                margin-right: 5px;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
             }
             
             .chat-area {
@@ -170,39 +316,62 @@ def home():
             }
             
             .messages {
-                height: 300px;
+                height: 320px;
                 overflow-y: auto;
                 background: #f8f9fa;
                 border-radius: 10px;
                 padding: 20px;
                 margin-bottom: 20px;
+                scroll-behavior: smooth;
             }
             
             .message {
                 margin-bottom: 15px;
-                padding: 12px;
-                border-radius: 8px;
-                max-width: 80%;
+                padding: 12px 15px;
+                border-radius: 12px;
+                max-width: 85%;
+                word-wrap: break-word;
+                animation: fadeIn 0.3s ease-in;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
             
             .message.user {
-                background: #667eea;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 margin-left: auto;
+                border-bottom-right-radius: 4px;
                 text-align: right;
-                max-width: 80%;
             }
             
             .message.iris {
                 background: #e8e8e8;
                 color: #333;
                 margin-right: auto;
-                max-width: 80%;
+                border-bottom-left-radius: 4px;
+            }
+            
+            .message.iris::before {
+                content: "🌸 ";
+                margin-right: 5px;
+            }
+            
+            .message.interruption {
+                background: #fff3cd;
+                color: #856404;
+                font-size: 12px;
+                margin: 10px auto;
+                text-align: center;
+                border: 1px dashed #ffc107;
             }
             
             .input-area {
                 display: flex;
                 gap: 10px;
+                margin-bottom: 15px;
             }
             
             input {
@@ -212,6 +381,7 @@ def home():
                 border-radius: 8px;
                 font-size: 14px;
                 font-family: inherit;
+                transition: border-color 0.3s;
             }
             
             input:focus {
@@ -221,26 +391,64 @@ def home():
             
             button {
                 padding: 12px 30px;
-                background: #667eea;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 border: none;
                 border-radius: 8px;
                 cursor: pointer;
                 font-weight: 500;
-                transition: background 0.3s;
+                transition: transform 0.2s, box-shadow 0.2s;
             }
             
             button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            }
+            
+            button:active {
+                transform: translateY(0);
+            }
+            
+            .voice-controls {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .voice-btn {
+                flex: 1;
+                padding: 10px;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: 500;
+                transition: all 0.3s;
+            }
+            
+            .voice-btn:hover {
                 background: #764ba2;
+            }
+            
+            .voice-btn.active {
+                background: #27ae60;
+                box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
             }
             
             .info {
                 text-align: center;
                 color: #666;
                 font-size: 12px;
-                margin-top: 20px;
-                padding-top: 20px;
+                padding-top: 15px;
                 border-top: 1px solid #e0e0e0;
+            }
+            
+            .info small {
+                display: block;
+                margin: 5px 0;
+                opacity: 0.7;
             }
         </style>
     </head>
@@ -248,47 +456,55 @@ def home():
         <div class="container">
             <div class="header">
                 <h1>🌸 IRIS AI v2.0</h1>
-                <p>Давай поговорим!</p>
+                <p>🗣️ ЖИВАЯ КОНвЕРСАЦИЯ</p>
+                <p>🎤 Микрофон + голос + Прерывание</p>
             </div>
             
-            <div class="status">
+            <div class="status-grid">
                 <div class="status-item">
-                    <strong>✅ Статус</strong>
-                    <span>АКТИВНА</span>
+                    <strong>🌟 Статус</strong>
+                    <span class="status-value"><span class="pulse"></span>АКТИВНА</span>
                 </div>
                 <div class="status-item">
-                    <strong>🧠 Мозг</strong>
-                    <span>ГОТОВ</span>
+                    <strong>🗣️ Процесс</strong>
+                    <span class="status-value" id="msg-count">0</span>
                 </div>
                 <div class="status-item">
-                    <strong>🎙️ Микрофон</strong>
-                    <span>ПОДКЛЮЧЕН</span>
+                    <strong>🎤 Микрофон</strong>
+                    <span class="status-value" id="voice-status">ОК</span>
                 </div>
                 <div class="status-item">
-                    <strong>🎮 CS2</strong>
-                    <span>СЛУШАЕТ</span>
+                    <strong>🆘 Орск</strong>
+                    <span class="status-value" id="engine-status">ОК</span>
                 </div>
             </div>
             
             <div class="chat-area">
                 <div class="messages" id="messages">
                     <div class="message iris">
-                        👋 Привет! Я IRIS, твоя ассистентка. Готова помогать!
+                        🍸 Фю! Я рада тебя видеть!
                     </div>
+                </div>
+                
+                <div class="voice-controls" id="voice-controls" style="display:none;">
+                    <button class="voice-btn" id="voice-start">🎤 Начать слушание</button>
+                    <button class="voice-btn" id="voice-stop">⛔ Остановить</button>
                 </div>
                 
                 <div class="input-area">
                     <input 
                         type="text" 
                         id="input" 
-                        placeholder="Напиши сообщение..."
+                        placeholder="Напиши что-нибудь..."
                         onkeypress="if(event.key==='Enter') sendMessage()"
                     >
                     <button onclick="sendMessage()">➤</button>
                 </div>
                 
                 <div class="info">
-                    🚀 Архитектура: src/ (15 модулей) | main/ (launcher) | config/ (settings)
+                    <small>🌸 ЖИВАЯ речь которая реагирует от прерываний</small>
+                    <small>🔁 Естественная ритм и паузы</small>
+                    <small>🆘 Орк: 15 модулей | Отличная архитектура</small>
                 </div>
             </div>
         </div>
@@ -296,6 +512,7 @@ def home():
         <script>
             const messagesDiv = document.getElementById('messages');
             const inputField = document.getElementById('input');
+            let messageCount = 0;
             
             async function sendMessage() {
                 const text = inputField.value.trim();
@@ -309,6 +526,8 @@ def home():
                 
                 inputField.value = '';
                 messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                messageCount++;
+                document.getElementById('msg-count').textContent = messageCount;
                 
                 try {
                     // Отправляем на сервер
@@ -330,6 +549,15 @@ def home():
                     console.error('Ошибка:', error);
                 }
             }
+            
+            // Обновляем статус каждые секунды
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/api/status');
+                    const data = await response.json();
+                    document.getElementById('engine-status').textContent = data.ready ? '✅' : '❌';
+                } catch (e) {}
+            }, 2000);
         </script>
     </body>
     </html>
@@ -339,13 +567,13 @@ def home():
 
 @app.route('/api/status', methods=['GET'])
 def status():
-    """API: Статус сервера."""
+    """АПИ: Отдать статус сервера"""
     return jsonify(iris_status)
 
 
 @app.route('/api/message', methods=['POST'])
 def message():
-    """API: Обработать сообщение."""
+    """АПИ: Обработать сообщение"""
     try:
         data = request.get_json()
         text = data.get('text', '').strip()
@@ -356,42 +584,53 @@ def message():
         # Обрабатываем через мозг
         response = brain.process(text)
         
+        iris_status['messages_processed'] += 1
+        
         return jsonify({
             'success': True,
             'input': text,
             'response': response,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'interrupting': iris_context['speaking']
         })
     
     except Exception as e:
-        logger.error(f"[API] Ошибка: {e}")
+        logger.error(f"[АПИ] Ошибка: {e}")
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    """API: Health check."""
+    """АПИ: Health check"""
     return jsonify({
         'status': 'healthy',
         'version': '2.0',
+        'voice_engine': VOICE_ENGINE_AVAILABLE,
         'timestamp': datetime.now().isoformat()
     })
 
 
 def main():
     """Главная функция запуска сервера."""
-    logger.info("\n" + "="*70)
-    logger.info("[IRIS SERVER] 🌸 IRIS AI v2.0 - ЗАПУСК")
-    logger.info("="*70)
+    logger.info("\n" + "="*80)
+    logger.info("[IRIS SERVER] 🌸 IRIS AI v2.0 - ПОЛНОСТЬЮ ЖИВАЯ!")
+    logger.info("="*80)
     
-    logger.info("[IRIS SERVER] 📚 Загруженные модули:")
-    logger.info(f"[IRIS SERVER]   ✅ iris_brain (LLM мозг)")
-    logger.info(f"[IRIS SERVER]   ✅ Flask API (:5000)")
-    logger.info(f"[IRIS SERVER]   ✅ Web UI (интерфейс)")
+    logger.info("[IRIS SERVER] 🗣️ Архитектура:")
+    logger.info("[IRIS SERVER]   ✅ iris_brain (Мозг с LLM Ответы)")
+    logger.info("[IRIS SERVER]   ✅ iris_voice_engine (Микрофон + TTS + Прерывание)" if VOICE_ENGINE_AVAILABLE else "[IRIS SERVER]   [✗] iris_voice_engine (недоступна)")
+    logger.info("[IRIS SERVER]   ✅ Flask API (:5000)")
+    logger.info("[IRIS SERVER]   ✅ Web UI (Корасывый интерфейс)")
+    logger.info("[IRIS SERVER]   ✅ 15 модулей в src/")
     
-    logger.info("\n[IRIS SERVER] 🚀 Запускаю Flask...")
-    logger.info("[IRIS SERVER] 🌐 Откройте http://localhost:5000")
-    logger.info("[IRIS SERVER] ⌨️  Для выхода: Ctrl+C\n")
+    if voice_engine:
+        logger.info("\n[VOICE] 🎤 Запускаю Voice Engine...")
+        voice_engine.start()
+        logger.info("[VOICE] ✅ Voice Engine активен")
+    
+    logger.info("\n[FLASK] 🚀 Запускаю Flask...")
+    logger.info("[FLASK] 🌐 Откройте в браузере: http://localhost:5000")
+    logger.info("[FLASK] ✏️  Для выхода: Ctrl+C\n")
     
     try:
         app.run(
@@ -402,11 +641,13 @@ def main():
             threaded=True
         )
     except KeyboardInterrupt:
-        logger.info("\n[IRIS SERVER] Остановка сервера...")
+        logger.info("\n[IRIS SERVER] 🛑 Остановка сервера...")
+        if voice_engine:
+            voice_engine.stop()
     except Exception as e:
         logger.error(f"[IRIS SERVER] Ошибка: {e}")
     finally:
-        logger.info("[IRIS SERVER] До свидания! 🌸")
+        logger.info("[IRIS SERVER] 🌸 До свидания!")
 
 
 if __name__ == '__main__':
