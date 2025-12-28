@@ -4,7 +4,7 @@
 Главный класс для организации работы всех слоёв IRIS:
 - Данные: context_builder
 - Логика: prompt_builder, iris_smart_engine
-- Мозг: iris_brain
+- Мозг: iris_brain (ВЮГИ в НЕМ уже ИНТЕГРИРОВАННЫ)
 - Голос: tts_engine, iris_voice_engine
 
 Полный цикл обработки события:
@@ -17,7 +17,7 @@ from typing import Dict, Optional, Any
 from enum import Enum
 
 try:
-    from iris_brain_v2_integrated import IrisBrainV2, EventType, Mood
+    from iris_brain import IrisBrain, EventType, Mood
     from iris_voice_engine import IrisVoiceEngine
     from context_builder import SmartContextBuilder
     from prompt_builder import SmartPromptBuilder
@@ -62,11 +62,11 @@ class IrisOrchestrator:
         
         logger.info("🌟 НИНИЦИАЛИЗАЦИЯ ОКЕСТРАТОРА")
         
-        # Главные компоненты
-        self.brain = IrisBrainV2()
+        # Основные компоненты
+        self.brain = IrisBrain()  # iris_brain имеет поддержку компонентов
         self.voice_engine = IrisVoiceEngine()
         
-        # Интеллектуальные системы
+        # Компоненты интеграции (для поддержки)
         self.context_builder = SmartContextBuilder()
         self.prompt_builder = SmartPromptBuilder()
         self.smart_engine = EventPriorityManager()
@@ -101,7 +101,7 @@ class IrisOrchestrator:
         """
         
         if self.processing:
-            logger.debug("🚫 Обработка занята, пропускаем ")
+            logger.debug("🚫 Обработка занята, пропускаем")
             return None
         
         self.processing = True
@@ -110,90 +110,36 @@ class IrisOrchestrator:
         try:
             logger.info(f"📄 Событие: {event_type}")
             
-            # 1. СОБРАТЬ КОНТЕКСТ
-            context = None
-            if self.context_builder and player and cs2_gsi:
-                try:
-                    context = self.context_builder.build(player, cs2_gsi, event_type, event_data)
-                    if context:
-                        logger.info(f"📊 Контекст: HP={context.get('health')}, KS={context.get('kill_streak')}")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка context_builder: {e}")
-            
-            # 2. ОПРЕДЕЛИТЬ ПРИОРИТЕТ
-            priority = EventPriority.MEDIUM
-            if self.smart_engine and context:
-                try:
-                    priority = self.smart_engine.get_priority(event_type, context)
-                    logger.info(f"🎯 Приоритет: {priority.name if hasattr(priority, 'name') else priority}")
-                    
-                    # Если CRITICAL - прервать
-                    if priority.value >= 100:
-                        if self.tts_engine:
-                            self.tts_engine.interrupt()
-                            logger.info("🛑 Прерывание текущей речи")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка smart_engine: {e}")
-            
-            # 3. ПОСТРОИТЬ ПРОМПТ
-            prompt = None
-            emotion = 'neutral'
-            
-            if self.prompt_builder and context and event_type == 'kill':
-                try:
-                    prompt = self.prompt_builder.build_kill_prompt(context, 'kill')
-                    if prompt:
-                        logger.info(f"💬 Промпт: {prompt[:50]}...")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка prompt_builder: {e}")
-            elif self.prompt_builder and context and event_type == 'damage':
-                try:
-                    prompt = self.prompt_builder.build_damage_prompt(context)
-                    if prompt:
-                        logger.info(f"💬 Промпт урона: {prompt[:50]}...")
-                except Exception as e:
-                    logger.error(f"❌ Ошибка damage prompt: {e}")
-            
-            # Если промпт не составлен - установить fallback
-            if not prompt:
-                if event_type == 'kill':
-                    prompt = f"Отличный фраг!"
-                    emotion = 'happy'
-                elif event_type == 'death':
-                    prompt = "Ничего, в следующий раз!"
-                    emotion = 'supportive'
-                elif event_type == 'damage':
-                    prompt = "ОНО ФИНАЛИ КОЛИЧЕСТВО НОВО НАДО Устранить"
-                    emotion = 'tense'
-                else:
-                    prompt = f"Событие: {event_type}"
-                    emotion = 'neutral'
-            
-            # Определить эмоцию
-            emotion = self._detect_emotion(event_type, context, priority)
-            
-            # 4. ОБРАБОТАТЬ ЧЕРЕЗ BRAIN
+            # Передать в iris_brain для генерации ответа
+            # iris_brain внутренне использует компоненты интеграции
             if event_type == 'kill':
-                response = self.brain.react_to_kill(event_data, player, cs2_gsi)
+                response = self.brain.react_to_kill(event_data, player=player, cs2_gsi=cs2_gsi)
             elif event_type == 'death':
-                response = self.brain.react_to_death(event_data, player, cs2_gsi)
-            elif event_type == 'damage':
-                health = context.get('health', 100) if context else event_data.get('health', 100)
-                response = self.brain.react_to_low_health(int(health), player, cs2_gsi)
+                response = self.brain.react_to_death(event_data, player=player, cs2_gsi=cs2_gsi)
+            elif event_type == 'damage' or event_type == 'low_health':
+                health = event_data.get('health', 100)
+                response = self.brain.react_to_low_health(int(health), player=player, cs2_gsi=cs2_gsi)
+            elif event_type == 'round_end':
+                response = self.brain.react_to_round_end(event_data)
+            elif event_type == 'bomb_planted':
+                response = self.brain.react_to_bomb_event('plant', event_data)
+            elif event_type == 'bomb_defused':
+                response = self.brain.react_to_bomb_event('defuse', event_data)
+            elif event_type == 'bomb_exploded':
+                response = self.brain.react_to_bomb_event('explode', event_data)
             else:
                 # Общая обработка
-                response = self.brain.generate_response(prompt, emotion=emotion, force=True)
+                prompt = f"Событие: {event_type}"
+                response = self.brain.generate_response(prompt, force=True)
             
-            # 5. ЛОГИРОВАНие
+            # ЛОГИРОВАНие
             elapsed = time.time() - start_time
             logger.info(f"✅ Ответ за {elapsed:.3f}с: {response[:50] if response else 'None'}...")
             
             # СОХРАНять в лог
             self.event_log.append({
                 'type': event_type,
-                'priority': priority.name if hasattr(priority, 'name') else str(priority),
                 'response': response,
-                'emotion': emotion,
                 'time': elapsed,
                 'timestamp': time.time()
             })
@@ -207,54 +153,7 @@ class IrisOrchestrator:
         finally:
             self.processing = False
     
-    # ===================== ОПРЕДЕЛЕНИЕ ЭМОЦИИ =====================
-    def _detect_emotion(self, event_type: str, context: Optional[Dict], priority: EventPriority) -> str:
-        """
-        Определить эмоцию по типу события и контексту
-        
-        Args:
-            event_type: Тип события
-            context: Контекст гры
-            priority: Приоритет события
-        
-        Returns:
-            Название эмоции
-        """
-        
-        if event_type == 'kill':
-            if context:
-                round_kills = context.get('round_kills', 1)
-                if round_kills >= 5:
-                    return 'excited'  # АЦЭ!
-                elif round_kills >= 3:
-                    return 'excited'  # Тройная
-                elif context.get('kill_streak', 1) >= 10:
-                    return 'proud'    # Мега последовательность
-            return 'happy'
-        
-        elif event_type == 'death':
-            return 'supportive'
-        
-        elif event_type == 'damage':
-            if context and context.get('health', 100) <= 15:
-                return 'tense'
-            return 'supportive'
-        
-        elif event_type == 'round_win':
-            return 'excited'
-        
-        elif event_type == 'round_loss':
-            return 'supportive'
-        
-        else:
-            # Нейтральная для неизвестных
-            return 'neutral'
-    
-    # ===================== НОРМАЛИЗАЦИЯ МОдели =====================
-    def update_game_context(self, **kwargs):
-        """Обновить контекст игры"""
-        self.brain.update_context(**kwargs)
-    
+    # ===================== НОРМаЛиЗАЦИЯ МОдели =====================
     def set_mood(self, mood: str):
         """Установить настроение"""
         try:
@@ -275,11 +174,10 @@ class IrisOrchestrator:
         """Корректно остановить систему"""
         logger.info("🛑 Остановка окестратора...")
         
-        if self.tts_engine:
-            self.tts_engine.stop()
-        
-        if self.voice_engine:
-            self.voice_engine.stop_listening()
+        try:
+            self.brain.shutdown()
+        except Exception as e:
+            logger.error(f"Ошибка при остановке brain: {e}")
         
         logger.info("✅ Окестратор остановлен")
 
@@ -290,11 +188,10 @@ if __name__ == "__main__":
     🌟 IRIS ORCHESTRATOR v1.0
     Окестратор всех компонентов IRIS
     
-    Понимает:
+    🔗 Основа - iris_brain (уже интегрирован с):
     - context_builder (данные)
     - prompt_builder (логика)
     - iris_smart_engine (приоритеты)
-    - iris_brain (мозг)
     - tts_engine (эмоциональный голос)
     """)
     
@@ -323,7 +220,7 @@ if __name__ == "__main__":
     print("3️⃣ Статистика:")
     stats = orchestrator.get_stats()
     print(f"Всего ответов: {stats['total_responses']}")
-    print(f"Настроение: {stats['mood']}")
+    print(f"Настроение: {stats['current_mood']}")
     
     # Остановка
     orchestrator.shutdown()
