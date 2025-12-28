@@ -1,0 +1,59 @@
+# ✅ IRIS AI PROJECT - ОТОПЛЕНО
+
+**Дата:** 28 декабря 2025
+
+## 🗐 ЧТО ГЕЛОСЬ
+
+✅ **Проект репрактизирован для структурованности и чистоты.**
+
+## 📂 ОУБЛОНЫЕ ФАЙЛЫ
+
+✅ Удалены из **корня**:
+
+- ✅ `CHECKPOINT.md` → теперь только в `docs/`
+- ✅ `VOICE_SETUP.md` → теперь только в `docs/`
+- ✅ `IRIS_TTS_README.md` → удален
+- ✅ `iris_main.py` → оставлен только в `iris_ai/`
+
+## 📂 НОВИЕ ФАЙЛЫ
+
+✅ Созданы:
+
+- ✅ `README.md` → новый чистый
+- ✅ `docs/PROJECT_STRUCTURE.md` → полная навигация
+
+## 📂 СТРОКТУРА ДОКОВ
+
+```
+docs/
+├─ 👋 00_MAIN_SYSTEM_PROMPT.md      ✅ ($ фон в новый чат)
+├─ 📄 CHECKPOINT.md                ✅ текущее состояние
+├─ ✅ NEXT_SESSION_START.md          ✅ приоритеты
+├─ 🛰 PROJECT_MASTER_CONTEXT.md    ✅ раскрывающая твуктура
+├─ 📅 DEV_LOG.md                    ✅ история
+├─ 🌸 IRIS_PROJECT_VISION.md       ✅ концепция
+├─ 🧠 MEMORY_BANK.md               ✅ принципы
+├─ 😨 QUICK_FIXES.md               ✅ патчи
+├─ 🎤 VOICE_SETUP.md               ✅ голос
+├─ 🛳 PROJECT_STRUCTURE.md          ✅ этот файл
+├─ 📄 00_START_HERE_NAVIGATION.md  ✅ если потерял
+├─ ⚡ START_HERE.md                ✅ быстрый старт
+├─ 📄 00_ЧИТАЙ...md              ✅ введение
+└─ 🧠 README_ПОНИМАНИЕ.md         ✅ что я понял
+```
+
+## 📂 УКЛАДКА ДЛЯ СЛОМА
+
+Настройка `requirements.txt` и зависимости - ✅ (не трогали)
+
+## 🙋 ЧО ДЕЛАТЬ ДАЛьше?
+
+**Откры те же документы** для работы:
+
+1. `docs/00_MAIN_SYSTEM_PROMPT.md` → скопируй в старт промпта
+2. `docs/NEXT_SESSION_START.md` → приоритеты
+3. `docs/PROJECT_MASTER_CONTEXT.md` → опционально
+
+---
+
+**Готово!** 🌸
