@@ -6,41 +6,37 @@
 
 ---
 
-## 🚀 НАЧНИ ОТ СОгА
+## 🚀 НАЧНИ ОТ ОЮГА (ОПТИМАЛЬНО)
 
-📄 Открой файлы в **ЭТОМ порядке:**
+### 👋 **Если ты НОВЫЙ АИ:**
 
-### 👋 **ЕСЛИ ТЫ НОВЫЙ АИ:**
-
-1. **`docs/01_AI_SYNC_PROTOCOL.md`** ← КАК всё работает
-2. **`docs/00_MAIN_SYSTEM_PROMPT.md`** ← скопируй в старт промпта
-3. **`docs/CHECKPOINT.md`** ← где мы сейчас
-4. **`docs/NEXT_SESSION_START.md`** ← где дальше
-
-### 📅 **ЕСЛИ НУЖНО КОНТЕКСТ:**
-
-- **`docs/PROJECT_MASTER_CONTEXT.md`** ← новая сессия → бери
-- **`docs/MEMORY_BANK.md`** ← гдавные принципы (НЕ ЧУЖ)
-
-### 🖐 **ЕСЛИ СВАлил КОНТЕКСТ:**
-
-- **`SYSTEM_MEMORY_RESTORE.md`** ← восстанови всё
+1. **`docs/00_MAIN_SYSTEM_PROMPT.md`** ← скопируй в **SYSTEM PROMPT**
+2. Отправь эти 4 документа **одним сообщением**:
+   - `CHECKPOINT.md`
+   - `NEXT_SESSION_START.md`
+   - `PROJECT_MASTER_CONTEXT.md`
+   - `MEMORY_BANK.md`
+3. **Готово!** Заутоматически синхронизируется
 
 ---
 
-## 📂 ПОЛНАЯ НАВИГАЦИЯ
+## 📂 МИНИМАЛЬНО (ТОЛЬКО САМОЕ ВАЖНОЕ)
 
-🛳 **`docs/PROJECT_STRUCTURE.md`** → где всё лежит а зачем
-
----
-
-## 📄 ПРОТОКОЛЫ ПО МОНОйЗАЦИИ АИ
-
-КОГНА ПЕРЕходишь НА НОВОГО:
-
-1. **`docs/01_AI_SYNC_PROTOCOL.md`** ← ВГЕ итог новому АИ
-2. **`docs/02_HANDOVER_CHECKLIST.md`** ← Кик передать
-3. **`docs/CHECKPOINT_TEMPLATE.md`** ← Как писать атчёты
+```
+docs/
+├─ 00_MAIN_SYSTEM_PROMPT.md  ✅ ПРОМПТ
+├─ CHECKPOINT.md            ✅ НЫНешние результаты
+├─ NEXT_SESSION_START.md    ✅ ПЛАН НА БУДУЩЕЕ
+├─ PROJECT_MASTER_CONTEXT.md ✅ КОНТЕКСТ
+├─ MEMORY_BANK.md           ✅ ПОНЦОВАННЫЕ НОМВЫ
+├─ INDEX.md                🛳 КУДА КО ВСЕМУ
+├─ 01_AI_SYNC_PROTOCOL.md   ✅ ОФИЦИАЛОННое
+├─ 02_HANDOVER_CHECKLIST.md ✅ ПОНадочно
+├─ AI_HANDOFF_QUICK.md      ✅ Если ПОспешил
+├─ DEV_LOG.md              📅 История
+├─ IRIS_PROJECT_VISION.md  🌸 КОНЦЕПцИЯ
+└─ VOICE_SETUP.md            🎤 НАстройка
+```
 
 ---
 
@@ -72,30 +68,4 @@
 
 ---
 
-## 📂 ФАЙЛОВАЯ СТРОКтУРА
-
-```
-root/
-├─ README.md (этот файл)
-├─ SYSTEM_MEMORY_RESTORE.md (🖐 SOS инструкция)
-├─ docs/ (вся документация)
-│  ├─ 01_AI_SYNC_PROTOCOL.md
-│  ├─ 02_HANDOVER_CHECKLIST.md
-│  ├─ 00_MAIN_SYSTEM_PROMPT.md
-│  ├─ CHECKPOINT.md
-│  ├─ NEXT_SESSION_START.md
-│  ├─ PROJECT_MASTER_CONTEXT.md
-│  ├─ MEMORY_BANK.md
-│  ├─ PROJECT_STRUCTURE.md
-│  ├─ CHECKPOINT_TEMPLATE.md
-│  └─ [остальные доку]
-├─ src/ (ОСНОВНОЙ КОД)
-├─ iris_ai/ (ДЕМО И ПОПЫТКИ)
-├─ requirements.txt
-├─ pyproject.toml
-└─ .env.example
-```
-
----
-
-**Подробнее → `docs/PROJECT_STRUCTURE.md`**
+**Подробнее → `docs/INDEX.md`**
