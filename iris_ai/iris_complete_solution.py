@@ -3,16 +3,16 @@
 """
 iris_complete_solution.py - ВСЁ В ОДНОМ ОКНЕ!
 
-это решение лаунчит высёт в ОДНОМ ОКНе:
+Это решение запускает ВСЁ в ОДНОМ ОКНЕ:
   1. IRIS мозг (Ollama LLM)
   2. Flask сервер
-  3. CS2 GSI listener (слушает гру от CS2)
-  4. Автоматически отправляет эвенты от игры в IRIS
+  3. CS2 GSI listener (слушает события от CS2)
+  4. Автоматически отправляет события от игры в IRIS
 
 Использование:
     python iris_ai/iris_complete_solution.py
 
-Ничего менять не нужно - всё одно окно!
+Ничего менять не нужно - всё в одном окне!
 """
 
 import logging
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 class IRISCompleteSolution:
     """
-    Волшебные решение: всё в ОДНОМ процессе!
+    Волшебное решение: всё в ОДНОМ процессе!
     """
     
     def __init__(self):
@@ -57,11 +57,11 @@ class IRISCompleteSolution:
         self.event_queue = []
         
         logger.info("\n" + "="*70)
-        logger.info("[IRIS] Инициализация ПОЛНОГО рЕШЕНИЯ")
+        logger.info("[IRIS] Инициализация ПОЛНОГО РЕШЕНИЯ")
         logger.info("="*70)
     
     def init_iris_brain(self) -> bool:
-        """Настроить МОЗГ IRIS."""
+        """Инициализировать МОЗГ IRIS."""
         try:
             logger.info("\n[IRIS] Инициализирую мозг...")
             
@@ -86,13 +86,13 @@ class IRISCompleteSolution:
             return False
     
     def init_flask_server(self):
-        """Настроить Flask сервер в отдельном потоке."""
+        """Инициализировать Flask сервер в отдельном потоке."""
         try:
             from flask import Flask, request, jsonify
             from datetime import datetime
             
             app = Flask(__name__)
-            iris_ref = self.iris  # референсия на iris
+            iris_ref = self.iris  # ссылка на iris
             
             logger.info("\n[SERVER] Настраиваю Flask сервер...")
             
@@ -174,7 +174,7 @@ class IRISCompleteSolution:
             logger.error(f"[SERVER] ❌ Ошибка: {e}")
     
     def init_gsi_listener(self):
-        """Настроить GSI listener в отдельном потоке."""
+        """Инициализировать GSI listener в отдельном потоке."""
         try:
             from flask import Flask, request, jsonify
             import threading
@@ -184,7 +184,7 @@ class IRISCompleteSolution:
             gsi_app = Flask(__name__)
             iris_ref = self.iris
             
-            # сохраняем предыдущее состояние
+            # Сохраняем предыдущее состояние
             prev_health = 100
             prev_kills = 0
             prev_deaths = 0
@@ -207,17 +207,17 @@ class IRISCompleteSolution:
                     current_kills = match_stats.get('kills', 0)
                     current_deaths = match_stats.get('deaths', 0)
                     
-                    # Отправляем эвенты
+                    # Отправляем события
                     
                     # Убийство
                     if current_kills > prev_kills:
                         kills_delta = current_kills - prev_kills
                         
-                        # Получаем раунд убийств
+                        # Получаем количество убийств в раунде
                         round_kills = state.get('round_kills', 0)
                         weapon = '?'
                         
-                        # Пытаем вытащить наименование оружия
+                        # Пытаемся получить название оружия
                         weapons = player.get('weapons', {})
                         for w_key, w_data in weapons.items():
                             if w_data.get('state') == 'active':
@@ -234,7 +234,7 @@ class IRISCompleteSolution:
                         })
                         logger.info(f"[GSI] IRIS: {response}")
                     
-                    # Мерть
+                    # Смерть
                     if current_deaths > prev_deaths:
                         logger.info(f"[GSI] Смерть!")
                         response = iris_ref.analyze_game_event('death', {
@@ -252,7 +252,7 @@ class IRISCompleteSolution:
                         })
                         logger.info(f"[GSI] IRIS: {response}")
                     
-                    # Обновляем стате
+                    # Обновляем состояние
                     prev_health = current_health
                     prev_kills = current_kills
                     prev_deaths = current_deaths
@@ -294,14 +294,14 @@ class IRISCompleteSolution:
         🚣 Компоненты:
         ✅ IRIS Мозг - мыслит и отвечает
         ✅ Flask Server - слушает события
-        ✅ GSI Listener - катчит события от CS2
+        ✅ GSI Listener - перехватывает события от CS2
         ✅ Auto Events - автоматически отправляет
         
         🌟 Порты:
         3000 - CS2 GSI
         5000 - IRIS HTTP API
         
-        🔓 Хёк: Ctrl+C для выхода
+        🔓 Совет: Ctrl+C для выхода
         """
         logger.info(ascii_art)
     
@@ -327,9 +327,9 @@ class IRISCompleteSolution:
             
             logger.info("\n[READY] 🙋 IRIS ГОТОВА!")
             logger.info("[READY] 🌈 Весь мир ваш стрим!")
-            logger.info("\n[WAITING] Ожидаю евентов...\n")
+            logger.info("\n[WAITING] Ожидаю событий...\n")
             
-            # Остаемся живым
+            # Остаемся живыми
             while self.running:
                 time.sleep(1)
         
